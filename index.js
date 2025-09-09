@@ -17,10 +17,13 @@
 
 const express = require('express');
 const QRCode = require('qrcode');
+const path = require('path');
+const fs = require('fs');
 
 // Prefer @napi-rs/canvas; fallback to canvas
 let CanvasLib;
 let useNapi = false;
+let registeredFontFamily = null; // will be set if we successfully register a bundled TTF
 try {
   CanvasLib = require('@napi-rs/canvas');
   useNapi = true;
@@ -31,6 +34,40 @@ try {
     console.error('Failed to load canvas libraries. Install "@napi-rs/canvas" (preferred) or "canvas" as a fallback.');
     process.exit(1);
   }
+}
+
+// Try to register a bundled bold font (optional). Place a TTF in ./fonts
+// Priority: arial_black.ttf (as requested), then DejaVuSans-Bold.ttf.
+// This ensures consistent rendering on Render or any Linux host.
+try {
+  const fontDir = path.join(__dirname, 'fonts');
+  const candidates = [
+    'arial_black.ttf',
+    'ArialBlack.ttf',
+    'Arial-Black.ttf',
+    'DejaVuSans-Bold.ttf',
+    'DejaVuSansCondensed-Bold.ttf',
+    'Arial-Bold.ttf',
+    'ArialBold.ttf',
+  ];
+  for (const file of candidates) {
+    const fontPath = path.join(fontDir, file);
+    if (fs.existsSync(fontPath)) {
+      const familyName = file.toLowerCase().includes('arial') ? 'ArialBlack' : 'BadgeBold';
+      if (useNapi && CanvasLib.GlobalFonts && typeof CanvasLib.GlobalFonts.registerFromPath === 'function') {
+        CanvasLib.GlobalFonts.registerFromPath(fontPath, familyName);
+        registeredFontFamily = familyName;
+        break;
+      }
+      if (!useNapi && typeof CanvasLib.registerFont === 'function') {
+        CanvasLib.registerFont(fontPath, { family: familyName, weight: 'bold' });
+        registeredFontFamily = familyName;
+        break;
+      }
+    }
+  }
+} catch (_) {
+  // ignore registration errors; fallback to system fonts
 }
 
 const app = express();
@@ -176,8 +213,8 @@ async function renderBadgePng({ name, qrText, dpi, mmWidth, mmHeight, rotation, 
   // Split name into up to 2 lines
   const { line1, line2 } = splitNameIntoTwoLines(name, maxCharsLine1, maxCharsLine2);
 
-  // Fonts: bold system fonts
-  const fontFamily = 'Arial, Helvetica, DejaVuSans, sans-serif';
+  // Fonts: prefer a registered bundled font if available, else system fonts
+  const fontFamily = registeredFontFamily || 'Arial Black, Arial, Helvetica, DejaVuSans, sans-serif';
   const titleFontSize = Math.round(layoutBase.titleFont * uniformScale);
   const secondFontSize = Math.round(layoutBase.secondFont * uniformScale);
 
@@ -291,8 +328,19 @@ function parseParams(req) {
     rotation = [0, 90, 180, 270].includes(r) ? r : 0;
   }
   // optional caps for line lengths
-  const maxCharsLine1 = source.maxLine1 !== undefined ? Number(source.maxLine1) : DEFAULT_MAX_CHARS_LINE1;
-  const maxCharsLine2 = source.maxLine2 !== undefined ? Number(source.maxLine2) : DEFAULT_MAX_CHARS_LINE2;
+  // Accept alternate param names and strings; coerce to finite numbers
+  function toNum(v, fallback) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  }
+  const maxCharsLine1 = source.maxLine1 !== undefined ? toNum(source.maxLine1, DEFAULT_MAX_CHARS_LINE1)
+                        : source.max_line1 !== undefined ? toNum(source.max_line1, DEFAULT_MAX_CHARS_LINE1)
+                        : source.maxcharsline1 !== undefined ? toNum(source.maxcharsline1, DEFAULT_MAX_CHARS_LINE1)
+                        : DEFAULT_MAX_CHARS_LINE1;
+  const maxCharsLine2 = source.maxLine2 !== undefined ? toNum(source.maxLine2, DEFAULT_MAX_CHARS_LINE2)
+                        : source.max_line2 !== undefined ? toNum(source.max_line2, DEFAULT_MAX_CHARS_LINE2)
+                        : source.maxcharsline2 !== undefined ? toNum(source.maxcharsline2, DEFAULT_MAX_CHARS_LINE2)
+                        : DEFAULT_MAX_CHARS_LINE2;
   return { name, qr, dpi, mmWidth, mmHeight, rotation, maxCharsLine1, maxCharsLine2 };
 }
 

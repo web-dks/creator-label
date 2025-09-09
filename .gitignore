@@ -27,3 +27,13 @@ Thumbs.db
 .cache/
 dist/
 coverage/
+
+# Windows special files
+NUL
+PRN
+CON
+AUX
+COM1
+COM2
+COM3
+LPT1

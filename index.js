@@ -39,9 +39,22 @@ try {
 // Try to register a bundled bold font (optional). Place a TTF in ./fonts
 // Priority: arial_black.ttf (as requested), then DejaVuSans-Bold.ttf.
 // This ensures consistent rendering on Render or any Linux host.
+console.log('Looking for bundled fonts in:', __dirname);
 try {
   const fontDir = path.join(__dirname, 'fonts');
+  console.log('Font directory:', fontDir);
+  if (fs.existsSync(fontDir)) {
+    console.log('Font directory contents:', fs.readdirSync(fontDir));
+  } else {
+    console.log('Font directory does not exist, checking root directory for font files...');
+    const rootFiles = fs.readdirSync(__dirname).filter(f => f.endsWith('.ttf'));
+    console.log('TTF files in root:', rootFiles);
+  }
+  
   const candidates = [
+    'arial.ttf',
+    'Arial.ttf',
+    'ARIAL.TTF',
     'arial_black.ttf',
     'ArialBlack.ttf',
     'Arial-Black.ttf',
@@ -50,25 +63,50 @@ try {
     'Arial-Bold.ttf',
     'ArialBold.ttf',
   ];
-  for (const file of candidates) {
-    const fontPath = path.join(fontDir, file);
-    if (fs.existsSync(fontPath)) {
-      const familyName = file.toLowerCase().includes('arial') ? 'ArialBlack' : 'BadgeBold';
-      if (useNapi && CanvasLib.GlobalFonts && typeof CanvasLib.GlobalFonts.registerFromPath === 'function') {
-        CanvasLib.GlobalFonts.registerFromPath(fontPath, familyName);
-        registeredFontFamily = familyName;
-        break;
-      }
-      if (!useNapi && typeof CanvasLib.registerFont === 'function') {
-        CanvasLib.registerFont(fontPath, { family: familyName, weight: 'bold' });
-        registeredFontFamily = familyName;
-        break;
+  
+  // Check both fonts/ directory and root directory
+  const searchPaths = [fontDir, __dirname];
+  let foundFont = false;
+  
+  for (const searchDir of searchPaths) {
+    if (foundFont) break;
+    for (const file of candidates) {
+      const fontPath = path.join(searchDir, file);
+      console.log('Checking font path:', fontPath);
+      if (fs.existsSync(fontPath)) {
+        console.log('Found font file:', fontPath);
+        const familyName = file.toLowerCase().includes('arial') ? 'Arial' : 'BadgeBold';
+        try {
+          if (useNapi && CanvasLib.GlobalFonts && typeof CanvasLib.GlobalFonts.registerFromPath === 'function') {
+            CanvasLib.GlobalFonts.registerFromPath(fontPath, familyName);
+            registeredFontFamily = familyName;
+            console.log('Successfully registered font with @napi-rs/canvas:', familyName);
+            foundFont = true;
+            break;
+          }
+          if (!useNapi && typeof CanvasLib.registerFont === 'function') {
+            CanvasLib.registerFont(fontPath, { family: familyName, weight: 'bold' });
+            registeredFontFamily = familyName;
+            console.log('Successfully registered font with node-canvas:', familyName);
+            foundFont = true;
+            break;
+          }
+        } catch (fontErr) {
+          console.error('Error registering font:', fontErr);
+        }
       }
     }
   }
-} catch (_) {
-  // ignore registration errors; fallback to system fonts
+  
+  if (!foundFont) {
+    console.log('No custom font found, will use system fonts');
+  }
+} catch (err) {
+  console.error('Error during font registration:', err);
 }
+
+console.log('Final registered font family:', registeredFontFamily);
+console.log('Canvas library being used:', useNapi ? '@napi-rs/canvas' : 'canvas');
 
 const app = express();
 app.use(express.json());
@@ -120,12 +158,18 @@ function truncateToMaxChars(text, maxChars) {
 
 function splitNameIntoTwoLines(name, maxLine1, maxLine2) {
   if (!name) return { line1: '', line2: '' };
+  
+  const max1 = Math.max(1, Number(maxLine1) || DEFAULT_MAX_CHARS_LINE1);
+  const max2 = Math.max(1, Number(maxLine2) || DEFAULT_MAX_CHARS_LINE2);
+  
+  console.log(`splitNameIntoTwoLines: name="${name}", max1=${max1}, max2=${max2}`);
+  
   const words = name.trim().split(/\s+/);
   if (words.length === 1) {
-    return { line1: truncateToMaxChars(words[0], maxLine1 || DEFAULT_MAX_CHARS_LINE1), line2: '' };
+    const result = { line1: truncateToMaxChars(words[0], max1), line2: '' };
+    console.log('Single word result:', result);
+    return result;
   }
-  const max1 = maxLine1 || DEFAULT_MAX_CHARS_LINE1;
-  const max2 = maxLine2 || DEFAULT_MAX_CHARS_LINE2;
 
   // Try balanced split that also respects character caps
   const candidates = [];
@@ -137,7 +181,9 @@ function splitNameIntoTwoLines(name, maxLine1, maxLine2) {
   const valid = candidates.filter(c => c.l1.length <= max1 && c.l2.length <= max2);
   if (valid.length > 0) {
     valid.sort((a, b) => a.diff - b.diff);
-    return { line1: valid[0].l1, line2: valid[0].l2 };
+    const result = { line1: valid[0].l1, line2: valid[0].l2 };
+    console.log('Balanced split result:', result);
+    return result;
   }
 
   // Fallback: greedy fill line1, rest to line2, then truncate to caps
@@ -153,7 +199,10 @@ function splitNameIntoTwoLines(name, maxLine1, maxLine2) {
   }
   line1 = truncateToMaxChars(line1 || words[0], max1);
   line2 = truncateToMaxChars(line2, max2);
-  return { line1, line2 };
+  
+  const result = { line1, line2 };
+  console.log('Fallback split result:', result);
+  return result;
 }
 
 function createCanvas(width, height) {
@@ -214,7 +263,7 @@ async function renderBadgePng({ name, qrText, dpi, mmWidth, mmHeight, rotation, 
   const { line1, line2 } = splitNameIntoTwoLines(name, maxCharsLine1, maxCharsLine2);
 
   // Fonts: prefer a registered bundled font if available, else system fonts
-  const fontFamily = registeredFontFamily || 'Arial Black, Arial, Helvetica, DejaVuSans, sans-serif';
+  const fontFamily = registeredFontFamily || 'Arial, Helvetica, DejaVuSans, sans-serif';
   const titleFontSize = Math.round(layoutBase.titleFont * uniformScale);
   const secondFontSize = Math.round(layoutBase.secondFont * uniformScale);
 
@@ -347,6 +396,8 @@ function parseParams(req) {
 async function handleBadgeRequest(req, res) {
   try {
     const { name, qr, dpi, mmWidth, mmHeight, rotation, maxCharsLine1, maxCharsLine2 } = parseParams(req);
+    console.log('Request params:', { name, qr, dpi, mmWidth, mmHeight, rotation, maxCharsLine1, maxCharsLine2 });
+    
     if (!name) {
       return res.status(400).json({ error: 'Missing required parameter: name' });
     }

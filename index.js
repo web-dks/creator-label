@@ -376,6 +376,9 @@ function parseParams(req) {
     const r = Number(source.rotate);
     rotation = [0, 90, 180, 270].includes(r) ? r : 0;
   }
+  // output format: 'png' (default) or 'base64'
+  const format = typeof source.format === 'string' ? source.format.toLowerCase() : 'png';
+  const outputFormat = ['png', 'base64'].includes(format) ? format : 'png';
   // optional caps for line lengths
   // Accept alternate param names and strings; coerce to finite numbers
   function toNum(v, fallback) {
@@ -390,13 +393,13 @@ function parseParams(req) {
                         : source.max_line2 !== undefined ? toNum(source.max_line2, DEFAULT_MAX_CHARS_LINE2)
                         : source.maxcharsline2 !== undefined ? toNum(source.maxcharsline2, DEFAULT_MAX_CHARS_LINE2)
                         : DEFAULT_MAX_CHARS_LINE2;
-  return { name, qr, dpi, mmWidth, mmHeight, rotation, maxCharsLine1, maxCharsLine2 };
+  return { name, qr, dpi, mmWidth, mmHeight, rotation, outputFormat, maxCharsLine1, maxCharsLine2 };
 }
 
 async function handleBadgeRequest(req, res) {
   try {
-    const { name, qr, dpi, mmWidth, mmHeight, rotation, maxCharsLine1, maxCharsLine2 } = parseParams(req);
-    console.log('Request params:', { name, qr, dpi, mmWidth, mmHeight, rotation, maxCharsLine1, maxCharsLine2 });
+    const { name, qr, dpi, mmWidth, mmHeight, rotation, outputFormat, maxCharsLine1, maxCharsLine2 } = parseParams(req);
+    console.log('Request params:', { name, qr, dpi, mmWidth, mmHeight, rotation, outputFormat, maxCharsLine1, maxCharsLine2 });
     
     if (!name) {
       return res.status(400).json({ error: 'Missing required parameter: name' });
@@ -404,9 +407,25 @@ async function handleBadgeRequest(req, res) {
 
     const pngBuffer = await renderBadgePng({ name, qrText: qr, dpi, mmWidth, mmHeight, rotation, maxCharsLine1, maxCharsLine2 });
 
-    res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Content-Disposition', 'inline; filename="badge.png"');
-    res.send(pngBuffer);
+    if (outputFormat === 'base64') {
+      // Return base64 encoded image as JSON
+      const base64String = pngBuffer.toString('base64');
+      const dataUri = `data:image/png;base64,${base64String}`;
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.json({
+        success: true,
+        format: 'base64',
+        data: base64String,
+        dataUri: dataUri,
+        mimeType: 'image/png'
+      });
+    } else {
+      // Return binary PNG (default behavior)
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Disposition', 'inline; filename="badge.png"');
+      res.send(pngBuffer);
+    }
   } catch (err) {
     console.error('Error generating badge:', err);
     res.status(500).json({ error: 'Internal Server Error' });

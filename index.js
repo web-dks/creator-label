@@ -15,10 +15,12 @@
   - With @napi-rs/canvas, system fonts are used if available.
 */
 
+require('dotenv').config();
 const express = require('express');
 const QRCode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js');
 
 // Prefer @napi-rs/canvas; fallback to canvas
 let CanvasLib;
@@ -110,6 +112,28 @@ console.log('Canvas library being used:', useNapi ? '@napi-rs/canvas' : 'canvas'
 
 const app = express();
 app.use(express.json());
+
+// Supabase client (initialized only if env vars are present)
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const SUPABASE_TABLE = process.env.SUPABASE_PARTICIPANTS_TABLE || 'participants';
+const SUPABASE_SCHEMA = process.env.SUPABASE_SCHEMA || 'public';
+const SUPABASE_NAME_FIELD = process.env.SUPABASE_NAME_FIELD; // optional override
+const SUPABASE_QR_FIELD = process.env.SUPABASE_QR_FIELD; // optional override
+
+let supabase = null;
+if (SUPABASE_URL && SUPABASE_KEY) {
+  try {
+    supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      db: { schema: SUPABASE_SCHEMA },
+    });
+    console.log('Supabase client initialized for schema:', SUPABASE_SCHEMA);
+  } catch (e) {
+    console.error('Failed to initialize Supabase client:', e);
+  }
+} else {
+  console.log('Supabase not configured. Set SUPABASE_URL and SUPABASE_KEY to enable DB lookup.');
+}
 
 // Constants (portrait defaults)
 const MM_WIDTH = 50; // mm
@@ -219,7 +243,7 @@ function getContext2d(canvas) {
   return canvas.getContext('2d');
 }
 
-async function renderBadgePng({ name, qrText, dpi, mmWidth, mmHeight, rotation, maxCharsLine1, maxCharsLine2 }) {
+async function renderBadgePng({ name, qrText, category, dpi, mmWidth, mmHeight, rotation, maxCharsLine1, maxCharsLine2 }) {
   const clampedDpi = clamp(Number(dpi) || DEFAULT_DPI, MIN_DPI, MAX_DPI);
   const canvasWidthPx = Math.round(mmToPx(mmWidth, clampedDpi));
   const canvasHeightPx = Math.round(mmToPx(mmHeight, clampedDpi));
@@ -243,8 +267,8 @@ async function renderBadgePng({ name, qrText, dpi, mmWidth, mmHeight, rotation, 
   const scaleY = contentHeight / VIRTUAL_H;
 
   // Padding-only spacing (use padding instead of margins)
-  const topPaddingPx = 40
-  const bottomPaddingPx = 40
+  const topPaddingPx = 30
+  const bottomPaddingPx = 30
   const sidePaddingPx = 0;
   const innerWidth = Math.max(0, contentWidth - sidePaddingPx * 2);
   const centerX = sidePaddingPx + innerWidth / 2;
@@ -266,6 +290,10 @@ async function renderBadgePng({ name, qrText, dpi, mmWidth, mmHeight, rotation, 
   const fontFamily = registeredFontFamily || 'Arial, Helvetica, DejaVuSans, sans-serif';
   const titleFontSize = Math.round(layoutBase.titleFont * uniformScale);
   const secondFontSize = Math.round(layoutBase.secondFont * uniformScale);
+  // Category styling: very small and below the QR
+  const hasCategory = typeof category === 'string' && category.trim().length > 0;
+  const categoryFontSize = hasCategory ? Math.max(6, Math.round(secondFontSize * 0.25)) : 0;
+  const categoryGap = hasCategory ? Math.round(18 * uniformScale) : 0;
 
   ctx.textAlign = 'center';
   ctx.fillStyle = '#000000';
@@ -295,35 +323,46 @@ async function renderBadgePng({ name, qrText, dpi, mmWidth, mmHeight, rotation, 
   // After text gap before QR
   y += afterTextGap;
 
-  // Generate QR as PNG buffer
-  const qrPngBuffer = await QRCode.toBuffer(qrText || name, {
-    errorCorrectionLevel: 'M',
-    margin: 0,
-    color: {
-      dark: '#000000',
-      light: '#FFFFFF',
-    },
-    // width is applied by qrcode lib to output image; we'll fit it anyway
-    width: qrRenderSize,
-    type: 'png',
-  });
+  // Generate and draw QR only if qrText is provided
+  if (qrText) {
+    const qrPngBuffer = await QRCode.toBuffer(qrText, {
+      errorCorrectionLevel: 'M',
+      margin: 0,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF',
+      },
+      width: qrRenderSize,
+      type: 'png',
+    });
 
-  // Draw QR centered
-  const qrX = Math.round(sidePaddingPx + (innerWidth - qrRenderClamped) / 2);
-  let qrY = Math.round(y);
-  // Ensure bottom padding of 20px is preserved
-  const maxQrY = Math.max(topPaddingPx, Math.round(contentHeight - bottomPaddingPx - qrRenderClamped));
-  if (qrY > maxQrY) qrY = maxQrY;
+    const qrX = Math.round(sidePaddingPx + (innerWidth - qrRenderClamped) / 2);
+    let qrY = Math.round(y);
+    // Reserve space below QR for category (if present)
+    const reserveBelowQr = hasCategory ? (categoryGap + categoryFontSize) : 0;
+    const maxQrY = Math.max(
+      topPaddingPx,
+      Math.round(contentHeight - bottomPaddingPx - qrRenderClamped - reserveBelowQr)
+    );
+    if (qrY > maxQrY) qrY = maxQrY;
 
-  if (useNapi) {
-    // @napi-rs/canvas accepts ImageData-like; loadImage from buffer
-    const img = await CanvasLib.loadImage(qrPngBuffer);
-    ctx.drawImage(img, qrX, qrY, qrRenderClamped, qrRenderClamped);
-  } else {
-    // node-canvas
-    const img = new CanvasLib.Image();
-    img.src = qrPngBuffer;
-    ctx.drawImage(img, qrX, qrY, qrRenderClamped, qrRenderClamped);
+    if (useNapi) {
+      const img = await CanvasLib.loadImage(qrPngBuffer);
+      ctx.drawImage(img, qrX, qrY, qrRenderClamped, qrRenderClamped);
+    } else {
+      const img = new CanvasLib.Image();
+      img.src = qrPngBuffer;
+      ctx.drawImage(img, qrX, qrY, qrRenderClamped, qrRenderClamped);
+    }
+
+    if (hasCategory) {
+      const catText = category.trim();
+      const catY = qrY + qrRenderClamped + categoryGap;
+      ctx.font = `bold ${categoryFontSize}px ${fontFamily}`;
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#000000';
+      ctx.fillText(catText, centerX, catY);
+    }
   }
 
   // Compose onto final canvas with rotation if needed.
@@ -349,6 +388,7 @@ async function renderBadgePng({ name, qrText, dpi, mmWidth, mmHeight, rotation, 
   finalCtx.drawImage(contentCanvas, 0, 0);
   finalCtx.restore();
 
+  
   // Output PNG buffer
   if (useNapi && typeof finalCanvas.encode === 'function') {
     return await finalCanvas.encode('png');
@@ -359,8 +399,18 @@ async function renderBadgePng({ name, qrText, dpi, mmWidth, mmHeight, rotation, 
 function parseParams(req) {
   const method = req.method.toUpperCase();
   const source = method === 'GET' ? req.query : req.body || {};
+  try {
+    console.log('parseParams: method=%s url=%s', method, req.originalUrl);
+    console.log('parseParams: query=', req.query);
+    console.log('parseParams: body=', req.body);
+    console.log('parseParams: source keys=', Object.keys(source || {}));
+    console.log('parseParams: raw qr value=%o (type=%s)', source ? source.qr : undefined, source && source.qr !== undefined ? typeof source.qr : 'undefined');
+  } catch (e) {
+    console.log('parseParams: logging error:', e && e.message);
+  }
+  const qr = typeof source.qr === 'string' ? source.qr.trim() : undefined;
+  console.log('parseParams: derived qr=%o', qr);
   const name = typeof source.name === 'string' ? source.name.trim() : '';
-  const qr = typeof source.qr === 'string' ? source.qr : undefined;
   let dpi = source.dpi !== undefined ? Number(source.dpi) : DEFAULT_DPI;
   if (!Number.isFinite(dpi)) dpi = DEFAULT_DPI;
   dpi = clamp(dpi, MIN_DPI, MAX_DPI);
@@ -396,16 +446,73 @@ function parseParams(req) {
   return { name, qr, dpi, mmWidth, mmHeight, rotation, outputFormat, maxCharsLine1, maxCharsLine2 };
 }
 
+async function fetchParticipantById(participantId) {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select('id,name,category')
+      .eq('id', participantId)
+      .maybeSingle();
+    if (error) {
+      console.error('Supabase query error:', error);
+      return null;
+    }
+    return data || null;
+  } catch (e) {
+    console.error('Supabase fetch exception:', e);
+    return null;
+  }
+}
+
+async function fetchParticipantByQrUuid(qrUuid) {
+  // qr is the UUID and equals participants.id
+  return fetchParticipantById(qrUuid);
+}
+
+function resolveField(record, preferredField, fallbacks) {
+  if (!record) return undefined;
+  if (preferredField && record[preferredField] != null) return record[preferredField];
+  for (const f of fallbacks) {
+    if (record[f] != null) return record[f];
+  }
+  return undefined;
+}
+
 async function handleBadgeRequest(req, res) {
   try {
     const { name, qr, dpi, mmWidth, mmHeight, rotation, outputFormat, maxCharsLine1, maxCharsLine2 } = parseParams(req);
-    console.log('Request params:', { name, qr, dpi, mmWidth, mmHeight, rotation, outputFormat, maxCharsLine1, maxCharsLine2 });
-    
-    if (!name) {
+    console.log('handleBadgeRequest: params', { name, qr, dpi, mmWidth, mmHeight, rotation, outputFormat, maxCharsLine1, maxCharsLine2 });
+
+    // Optional: fetch participant by id if provided
+    let resolvedName = name;
+    let resolvedQr = qr;
+    let resolvedCategory = undefined;
+    if (qr) {
+      console.log('handleBadgeRequest: fetching participant by qr (uuid)=', qr);
+      const participant = await fetchParticipantByQrUuid(qr);
+      if (participant) {
+        console.log('handleBadgeRequest: participant found with keys=', Object.keys(participant));
+        if (typeof participant.name === 'string' && participant.name.trim().length > 0) {
+          resolvedName = participant.name.trim();
+        }
+        if (participant.category != null) {
+          resolvedCategory = String(participant.category);
+        }
+        // Force QR content to be exactly the uuid
+        resolvedQr = String(qr).trim();
+      } else {
+        console.log('handleBadgeRequest: participant NOT found for qr=', qr);
+        // No participant => do not render QR
+        resolvedQr = undefined;
+      }
+    }
+
+    if (!resolvedName) {
       return res.status(400).json({ error: 'Missing required parameter: name' });
     }
 
-    const pngBuffer = await renderBadgePng({ name, qrText: qr, dpi, mmWidth, mmHeight, rotation, maxCharsLine1, maxCharsLine2 });
+    const pngBuffer = await renderBadgePng({ name: resolvedName, qrText: resolvedQr, category: resolvedCategory, dpi, mmWidth, mmHeight, rotation, maxCharsLine1, maxCharsLine2 });
 
     if (outputFormat === 'base64') {
       // Return base64 encoded image as JSON

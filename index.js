@@ -161,6 +161,8 @@ const layoutBase = {
   qrSize: 300,
   subtitleFont: 72,
   gapNameToSubtitle: 36,
+  /** desloca nome + linha da unidade para baixo (unidades do régua virtual) */
+  nameBlockTopOffset: 22,
 };
 
 const EXTRA_KEY_AREA = 'Área de atuação CPS';
@@ -350,8 +352,9 @@ async function renderBadgePng({ name, qrText, subtitleLine, dpi, mmWidth, mmHeig
   ctx.textAlign = 'center';
   ctx.fillStyle = '#000000';
 
-  // Measure baseline Y start
-  let y = topPaddingPx;
+  // Measure baseline Y start (nome + subtítulo um pouco mais abaixo)
+  const nameStartY = topPaddingPx + (layoutBase.nameBlockTopOffset * scaleY);
+  let y = nameStartY;
 
   // Draw first line if exists
   if (line1) {

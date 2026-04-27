@@ -151,15 +151,20 @@ const VIRTUAL_H = 800;
 // Base layout values on the virtual ruler
 const layoutBase = {
   marginTop: 40,
-  // Larger fonts so the name occupies roughly half of the short side (50mm)
-  titleFont: 140, // line 1 font size on virtual ruler
-  secondFont: 140, // line 2 font size
+  // Name slightly smaller; subtitle (unidade / área) larger
+  titleFont: 118, // line 1 font size on virtual ruler
+  secondFont: 118, // line 2 font size
   // Smaller gap between lines
   lineGap: 40,
   // Slightly larger gap between the last text line and the QR
-  afterTextGap: 220,
-  qrSize: 330,
+  afterTextGap: 180,
+  qrSize: 300,
+  subtitleFont: 72,
+  gapNameToSubtitle: 36,
 };
+
+const EXTRA_KEY_AREA = 'Área de atuação CPS';
+const EXTRA_KEY_UNIDADE = 'Unidade';
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -229,6 +234,55 @@ function splitNameIntoTwoLines(name, maxLine1, maxLine2) {
   return result;
 }
 
+function parseExtraAnswers(raw) {
+  if (raw == null) return null;
+  if (typeof raw === 'object' && !Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    const t = raw.trim();
+    if (!t) return null;
+    try {
+      return JSON.parse(t);
+    } catch (e) {
+      console.error('parseExtraAnswers: invalid JSON', e && e.message);
+      return null;
+    }
+  }
+  return null;
+}
+
+/** Uma linha abaixo do nome a partir de extra_answers (regras de negócio). */
+function displayLineFromExtraAnswers(obj) {
+  if (!obj) return '';
+  const area = String(obj[EXTRA_KEY_AREA] ?? '').trim();
+  const unidade = String(obj[EXTRA_KEY_UNIDADE] ?? '').trim();
+  if (area === 'Adm. Central/ Polos Regionais') return 'Adm. Central';
+  if (area === 'Pós-Graduação') return 'Pós-Graduação';
+  const a = area.toLowerCase();
+  if (a === 'etec' || a === 'fatec') {
+    return (unidade || area).trim();
+  }
+  return '';
+}
+
+function wrapSubtitleLines(ctx, text, maxWidth, fontSizePx, fontFamily) {
+  const font = `bold ${fontSizePx}px ${fontFamily}`;
+  ctx.font = font;
+  const words = String(text).split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    const trial = line ? `${line} ${w}` : w;
+    if (ctx.measureText(trial).width <= maxWidth) {
+      line = trial;
+    } else {
+      if (line) lines.push(line);
+      line = w;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : (text ? [String(text)] : []);
+}
+
 function createCanvas(width, height) {
   if (useNapi) {
     return CanvasLib.createCanvas(width, height);
@@ -243,7 +297,7 @@ function getContext2d(canvas) {
   return canvas.getContext('2d');
 }
 
-async function renderBadgePng({ name, qrText, category, dpi, mmWidth, mmHeight, rotation, maxCharsLine1, maxCharsLine2 }) {
+async function renderBadgePng({ name, qrText, subtitleLine, dpi, mmWidth, mmHeight, rotation, maxCharsLine1, maxCharsLine2 }) {
   const clampedDpi = clamp(Number(dpi) || DEFAULT_DPI, MIN_DPI, MAX_DPI);
   const canvasWidthPx = Math.round(mmToPx(mmWidth, clampedDpi));
   const canvasHeightPx = Math.round(mmToPx(mmHeight, clampedDpi));
@@ -290,10 +344,8 @@ async function renderBadgePng({ name, qrText, category, dpi, mmWidth, mmHeight, 
   const fontFamily = registeredFontFamily || 'Arial, Helvetica, DejaVuSans, sans-serif';
   const titleFontSize = Math.round(layoutBase.titleFont * uniformScale);
   const secondFontSize = Math.round(layoutBase.secondFont * uniformScale);
-  // Category styling: very small and below the QR
-  const hasCategory = typeof category === 'string' && category.trim().length > 0;
-  const categoryFontSize = hasCategory ? Math.max(6, Math.round(secondFontSize * 0.25)) : 0;
-  const categoryGap = hasCategory ? Math.round(18 * uniformScale) : 0;
+  const subRaw = typeof subtitleLine === 'string' ? subtitleLine.trim() : '';
+  const hasSubtitle = subRaw.length > 0;
 
   ctx.textAlign = 'center';
   ctx.fillStyle = '#000000';
@@ -315,12 +367,29 @@ async function renderBadgePng({ name, qrText, category, dpi, mmWidth, mmHeight, 
     ctx.font = `bold ${secondFontSize}px ${fontFamily}`;
     ctx.textBaseline = 'top';
     ctx.fillText(line2, centerX, y);
-  } else {
+    y += secondFontSize;
+  } else if (line1) {
     // If only one line, add a bit more space as requested (+30 on virtual)
     y += titleFontSize + (lineGap + 30 * scaleY);
   }
 
-  // After text gap before QR
+  // Linha extra (unidade / Adm. Central / Pós-Grad. etc.) abaixo do nome
+  y += (layoutBase.gapNameToSubtitle * scaleY);
+  if (hasSubtitle) {
+    const subFont = Math.max(8, Math.round(layoutBase.subtitleFont * uniformScale));
+    const maxSubW = innerWidth * 0.92;
+    const lines = wrapSubtitleLines(ctx, subRaw, maxSubW, subFont, fontFamily);
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#000000';
+    const lineStep = subFont * 1.2;
+    for (const ln of lines) {
+      ctx.font = `bold ${subFont}px ${fontFamily}`;
+      ctx.fillText(ln, centerX, y);
+      y += lineStep;
+    }
+  }
+
+  // After text gap before QR (sem texto abaixo do QR)
   y += afterTextGap;
 
   // Generate and draw QR only if qrText is provided
@@ -338,8 +407,7 @@ async function renderBadgePng({ name, qrText, category, dpi, mmWidth, mmHeight, 
 
     const qrX = Math.round(sidePaddingPx + (innerWidth - qrRenderClamped) / 2);
     let qrY = Math.round(y);
-    // Reserve space below QR for category (if present)
-    const reserveBelowQr = hasCategory ? (categoryGap + categoryFontSize) : 0;
+    const reserveBelowQr = 0;
     const maxQrY = Math.max(
       topPaddingPx,
       Math.round(contentHeight - bottomPaddingPx - qrRenderClamped - reserveBelowQr)
@@ -353,15 +421,6 @@ async function renderBadgePng({ name, qrText, category, dpi, mmWidth, mmHeight, 
       const img = new CanvasLib.Image();
       img.src = qrPngBuffer;
       ctx.drawImage(img, qrX, qrY, qrRenderClamped, qrRenderClamped);
-    }
-
-    if (hasCategory) {
-      const catText = category.trim();
-      const catY = qrY + qrRenderClamped + categoryGap;
-      ctx.font = `bold ${categoryFontSize}px ${fontFamily}`;
-      ctx.textBaseline = 'top';
-      ctx.fillStyle = '#000000';
-      ctx.fillText(catText, centerX, catY);
     }
   }
 
@@ -408,7 +467,11 @@ function parseParams(req) {
   } catch (e) {
     console.log('parseParams: logging error:', e && e.message);
   }
-  const qr = typeof source.qr === 'string' ? source.qr.trim() : undefined;
+  let qr;
+  if (source.qr !== undefined && source.qr !== null) {
+    const s = String(source.qr).trim();
+    qr = s.length > 0 ? s : undefined;
+  }
   console.log('parseParams: derived qr=%o', qr);
   const name = typeof source.name === 'string' ? source.name.trim() : '';
   let dpi = source.dpi !== undefined ? Number(source.dpi) : DEFAULT_DPI;
@@ -451,7 +514,7 @@ async function fetchParticipantById(participantId) {
   try {
     const { data, error } = await supabase
       .from(SUPABASE_TABLE)
-      .select('id,name,category')
+      .select('id,name,extra_answers')
       .eq('id', participantId)
       .maybeSingle();
     if (error) {
@@ -487,24 +550,27 @@ async function handleBadgeRequest(req, res) {
     // Optional: fetch participant by id if provided
     let resolvedName = name;
     let resolvedQr = qr;
-    let resolvedCategory = undefined;
+    let subtitleLine = '';
     if (qr) {
-      console.log('handleBadgeRequest: fetching participant by qr (uuid)=', qr);
-      const participant = await fetchParticipantByQrUuid(qr);
-      if (participant) {
-        console.log('handleBadgeRequest: participant found with keys=', Object.keys(participant));
-        if (typeof participant.name === 'string' && participant.name.trim().length > 0) {
-          resolvedName = participant.name.trim();
+      if (supabase) {
+        console.log('handleBadgeRequest: fetching participant by qr (uuid)=', qr);
+        const participant = await fetchParticipantByQrUuid(qr);
+        if (participant) {
+          console.log('handleBadgeRequest: participant found with keys=', Object.keys(participant));
+          if (typeof participant.name === 'string' && participant.name.trim().length > 0) {
+            resolvedName = participant.name.trim();
+          }
+          const extra = parseExtraAnswers(participant.extra_answers);
+          subtitleLine = displayLineFromExtraAnswers(extra);
+          // Force QR content to be exactly the uuid
+          resolvedQr = String(qr).trim();
+        } else {
+          console.log('handleBadgeRequest: participant NOT found for qr=', qr);
+          resolvedQr = undefined;
         }
-        if (participant.category != null) {
-          resolvedCategory = String(participant.category);
-        }
-        // Force QR content to be exactly the uuid
-        resolvedQr = String(qr).trim();
       } else {
-        console.log('handleBadgeRequest: participant NOT found for qr=', qr);
-        // No participant => do not render QR
-        resolvedQr = undefined;
+        resolvedQr = String(qr).trim();
+        console.log('handleBadgeRequest: Supabase not configured, using qr as literal payload');
       }
     }
 
@@ -512,7 +578,7 @@ async function handleBadgeRequest(req, res) {
       return res.status(400).json({ error: 'Missing required parameter: name' });
     }
 
-    const pngBuffer = await renderBadgePng({ name: resolvedName, qrText: resolvedQr, category: resolvedCategory, dpi, mmWidth, mmHeight, rotation, maxCharsLine1, maxCharsLine2 });
+    const pngBuffer = await renderBadgePng({ name: resolvedName, qrText: resolvedQr, subtitleLine, dpi, mmWidth, mmHeight, rotation, maxCharsLine1, maxCharsLine2 });
 
     if (outputFormat === 'base64') {
       // Return base64 encoded image as JSON

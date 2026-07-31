@@ -23,6 +23,11 @@ services:
         value: "false"
       - key: LABEL_DYNAMIC_EVENT_IDS
         value: ""
+      # Rotação de saída só em /badge dinâmico (contrato TSPL do app:
+      # size width:50 height:80). Layout do editor e /v2 ficam em 80x50.
+      # Futuro (outra impressora): alterar para 0/180/270 sem redesenhar.
+      - key: LABEL_BADGE_OUTPUT_ROTATION
+        value: "90"
       # Segredos — definir manualmente no painel do Render, nunca neste arquivo.
       - key: SUPABASE_URL
         sync: false

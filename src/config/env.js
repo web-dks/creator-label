@@ -33,6 +33,13 @@ function parseIntOr(value, defaultValue) {
   return Number.isFinite(n) ? n : defaultValue;
 }
 
+/** Aceita apenas 0/90/180/270; valor inválido ou vazio → default. */
+function parseRotationDegrees(value, defaultValue) {
+  if (value === undefined || value === null || value === '') return defaultValue;
+  const n = Number(value);
+  return [0, 90, 180, 270].includes(n) ? n : defaultValue;
+}
+
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 const env = {
@@ -52,6 +59,11 @@ const env = {
   LABEL_DYNAMIC_EVENT_IDS: parseEventIdAllowlist(process.env.LABEL_DYNAMIC_EVENT_IDS),
   LABEL_API_KEY: process.env.LABEL_API_KEY || '',
   LABEL_LOGO_ALLOWED_HOSTS: parseHostAllowlist(process.env.LABEL_LOGO_ALLOWED_HOSTS),
+  // Rotação só na saída de /badge dinâmico (contrato app/TSPL). Layout do
+  // editor e /v2 permanecem na orientação de design (80x50). Default 90 =
+  // bobina atual tsc.size(width:50, height:80). Trocar impressora no futuro:
+  // ajustar esta env (0/90/180/270) sem redesenhar layouts.
+  LABEL_BADGE_OUTPUT_ROTATION: parseRotationDegrees(process.env.LABEL_BADGE_OUTPUT_ROTATION, 90),
   LABEL_LAYOUT_CACHE_TTL_SECONDS: parseIntOr(process.env.LABEL_LAYOUT_CACHE_TTL_SECONDS, 60),
   LABEL_CONTEXT_CACHE_TTL_SECONDS: parseIntOr(process.env.LABEL_CONTEXT_CACHE_TTL_SECONDS, 60),
   LABEL_RATE_LIMIT_WINDOW_MS: parseIntOr(process.env.LABEL_RATE_LIMIT_WINDOW_MS, 60000),
@@ -61,4 +73,11 @@ const envDefaults = getRateLimitDefaults(env.NODE_ENV);
 env.LABEL_RATE_LIMIT_MAX = parseIntOr(process.env.LABEL_RATE_LIMIT_MAX, envDefaults.rateLimitMax);
 env.LABEL_CONCURRENCY_LIMIT = parseIntOr(process.env.LABEL_CONCURRENCY_LIMIT, envDefaults.concurrencyLimit);
 
-module.exports = { env, parseBoolean, parseEventIdAllowlist, parseHostAllowlist, parseIntOr };
+module.exports = {
+  env,
+  parseBoolean,
+  parseEventIdAllowlist,
+  parseHostAllowlist,
+  parseIntOr,
+  parseRotationDegrees,
+};

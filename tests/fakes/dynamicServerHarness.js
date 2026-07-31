@@ -69,25 +69,32 @@ async function startDynamicEnabledServer({
   eventIdAllowlist = '',
   apiKey = '',
   dynamicEnabled = true,
+  badgeOutputRotation,
 } = {}) {
   const fakeDb = await createFakeDynamicSupabaseServer({ participants, layoutsByEventId, labelDataByParticipantId });
   const port = await getFreePort();
 
+  const childEnv = {
+    ...process.env,
+    PORT: String(port),
+    SUPABASE_URL: fakeDb.url,
+    SUPABASE_KEY: '',
+    SUPABASE_SERVICE_ROLE_KEY: 'local-fake-service-role-key',
+    SUPABASE_PARTICIPANTS_TABLE: 'participants',
+    SUPABASE_SCHEMA: 'public',
+    LABEL_DYNAMIC_LAYOUT_ENABLED: dynamicEnabled ? 'true' : 'false',
+    LABEL_DYNAMIC_EVENT_IDS: eventIdAllowlist,
+    LABEL_LOGO_ALLOWED_HOSTS: '',
+    LABEL_API_KEY: apiKey,
+  };
+  // Rotação de saída do /badge dinâmico (TSPL 50x80). Omitir = default do serviço.
+  if (badgeOutputRotation !== undefined && badgeOutputRotation !== null) {
+    childEnv.LABEL_BADGE_OUTPUT_ROTATION = String(badgeOutputRotation);
+  }
+
   const child = spawn(process.execPath, ['index.js'], {
     cwd: REPO_ROOT,
-    env: {
-      ...process.env,
-      PORT: String(port),
-      SUPABASE_URL: fakeDb.url,
-      SUPABASE_KEY: '',
-      SUPABASE_SERVICE_ROLE_KEY: 'local-fake-service-role-key',
-      SUPABASE_PARTICIPANTS_TABLE: 'participants',
-      SUPABASE_SCHEMA: 'public',
-      LABEL_DYNAMIC_LAYOUT_ENABLED: dynamicEnabled ? 'true' : 'false',
-      LABEL_DYNAMIC_EVENT_IDS: eventIdAllowlist,
-      LABEL_LOGO_ALLOWED_HOSTS: '',
-      LABEL_API_KEY: apiKey,
-    },
+    env: childEnv,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 

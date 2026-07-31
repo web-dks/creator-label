@@ -106,9 +106,17 @@ async function renderDynamicLabelPng(layoutResponse, labelData, options = {}) {
   }
 
   const allowedRotations = [0, 90, 180, 270];
-  const rotation = allowedRotations.includes(printProfile.default_rotation) ? printProfile.default_rotation : 0;
+  // options.outputRotation: override só para /badge (contrato impressora).
+  // Sem override, usa print_profile.default_rotation (orientação de design).
+  const fromOptions = options.outputRotation;
+  const fromProfile = printProfile.default_rotation;
+  const rotation = allowedRotations.includes(fromOptions)
+    ? fromOptions
+    : allowedRotations.includes(fromProfile)
+      ? fromProfile
+      : 0;
   const finalCanvas = applyRotation(canvas, scale.widthPx, scale.heightPx, rotation);
   return encodePng(finalCanvas);
 }
 
-module.exports = { renderDynamicLabelPng, computeScale };
+module.exports = { renderDynamicLabelPng, computeScale, applyRotation };

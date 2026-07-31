@@ -51,7 +51,7 @@ function isDynamicEligible(params) {
  * (badge legado faz fallback silencioso; `/v2/badges/render` responde
  * com um erro HTTP específico).
  */
-async function renderDynamicLabel(participantId, requestId) {
+async function renderDynamicLabel(participantId, requestId, options = {}) {
   const startedAt = Date.now();
   const remainingBudgetMs = () => DYNAMIC_FLOW_TOTAL_BUDGET_MS - (Date.now() - startedAt);
   const assertWithinBudget = (step) => {
@@ -73,7 +73,10 @@ async function renderDynamicLabel(participantId, requestId) {
   const labelData = await resolveParticipantLabelData(participantId, ctx.event_id);
   assertWithinBudget('rendering the dynamic label');
 
-  const pngBuffer = await renderDynamicLabelPng(layoutResponse, labelData, { requestId });
+  const pngBuffer = await renderDynamicLabelPng(layoutResponse, labelData, {
+    requestId,
+    outputRotation: options.outputRotation,
+  });
 
   logger.info('badge-service:dynamic-render-success', {
     requestId,
@@ -91,13 +94,19 @@ async function renderDynamicLabel(participantId, requestId) {
  * ocorre — o chamador deve então seguir com o `legacyLabelRenderer`
  * normalmente. Erros que NÃO são `FallbackEligibleError` propagam para o
  * chamador decidir a resposta HTTP (nunca viram fallback silencioso).
+ *
+ * Aplica `LABEL_BADGE_OUTPUT_ROTATION` (default 90) para alinhar o PNG ao
+ * contrato TSPL do app atual (`size(width:50, height:80)`), sem alterar
+ * o layout de design nem a rota `/v2`.
  */
 async function tryRenderDynamic(params, requestId) {
   if (!isDynamicEligible(params)) return null;
 
   const startedAt = Date.now();
   try {
-    const result = await renderDynamicLabel(params.qr, requestId);
+    const result = await renderDynamicLabel(params.qr, requestId, {
+      outputRotation: env.LABEL_BADGE_OUTPUT_ROTATION,
+    });
     return result.pngBuffer;
   } catch (err) {
     if (err && err.fallbackEligible) {

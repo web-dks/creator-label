@@ -74,11 +74,27 @@ test('badgeService.tryRenderDynamic orchestration', async (t) => {
 
   await t.test('renders a dynamic PNG end-to-end when everything checks out', async () => {
     env.LABEL_DYNAMIC_LAYOUT_ENABLED = true;
+    env.LABEL_BADGE_OUTPUT_ROTATION = 90;
     const png = await badgeService.tryRenderDynamic(
       { qr: 'aaaaaaaa-0000-0000-0000-000000000001' },
       'req-happy-path'
     );
     env.LABEL_DYNAMIC_LAYOUT_ENABLED = false;
+    assert.ok(Buffer.isBuffer(png));
+    const dims = readPngDimensions(png);
+    assert.equal(dims.width, 591);
+    assert.equal(dims.height, 945);
+  });
+
+  await t.test('LABEL_BADGE_OUTPUT_ROTATION=0 keeps design orientation on /badge path', async () => {
+    env.LABEL_DYNAMIC_LAYOUT_ENABLED = true;
+    env.LABEL_BADGE_OUTPUT_ROTATION = 0;
+    const png = await badgeService.tryRenderDynamic(
+      { qr: 'aaaaaaaa-0000-0000-0000-000000000001' },
+      'req-no-badge-rotation'
+    );
+    env.LABEL_DYNAMIC_LAYOUT_ENABLED = false;
+    env.LABEL_BADGE_OUTPUT_ROTATION = 90;
     assert.ok(Buffer.isBuffer(png));
     const dims = readPngDimensions(png);
     assert.equal(dims.width, 945);

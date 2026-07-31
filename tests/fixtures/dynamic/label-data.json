@@ -1,0 +1,36 @@
+{
+  "aaaaaaaa-0000-0000-0000-000000000001": {
+    "event": {
+      "id": 6,
+      "city": "São Paulo",
+      "name": "Evento Teste",
+      "state": "SP",
+      "venue": "Centro de Convenções",
+      "label_logo": "https://example-project.supabase.co/storage/v1/object/public/eventos/photos/6/logo-sintetico.png"
+    },
+    "participant": {
+      "id": "aaaaaaaa-0000-0000-0000-000000000001",
+      "name": "Fulano de Tal Sintético",
+      "category": "Marketing"
+    },
+    "customFields": {
+      "91": "Unidade Teste"
+    }
+  },
+  "aaaaaaaa-0000-0000-0000-000000000002": {
+    "event": {
+      "id": 33,
+      "city": "Campinas",
+      "name": "Evento Teste 2",
+      "state": "SP",
+      "venue": "Ginásio Municipal",
+      "label_logo": null
+    },
+    "participant": {
+      "id": "aaaaaaaa-0000-0000-0000-000000000002",
+      "name": "Ciclana Exemplo",
+      "category": "Operações"
+    },
+    "customFields": {}
+  }
+}

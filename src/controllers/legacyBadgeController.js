@@ -7,6 +7,7 @@ const {
   renderBadgePng,
 } = require('../renderers/legacyLabelRenderer');
 const { fetchLegacyParticipant, isLegacySupabaseConfigured } = require('../repositories/participantRepository');
+const { tryRenderDynamic } = require('../services/badgeService');
 const {
   MIN_DPI,
   MAX_DPI,
@@ -74,10 +75,37 @@ function parseParams(req) {
   return { name, qr, dpi, mmWidth, mmHeight, rotation, outputFormat, maxCharsLine1, maxCharsLine2 };
 }
 
+function sendBadgeResponse(res, pngBuffer, outputFormat) {
+  if (outputFormat === 'base64') {
+    const base64String = pngBuffer.toString('base64');
+    const dataUri = `data:image/png;base64,${base64String}`;
+    res.setHeader('Content-Type', 'application/json');
+    return res.json({
+      success: true,
+      format: 'base64',
+      data: base64String,
+      dataUri,
+      mimeType: 'image/png',
+    });
+  }
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Content-Disposition', 'inline; filename="badge.png"');
+  return res.send(pngBuffer);
+}
+
 async function handleLegacyBadgeRequest(req, res) {
   try {
     const { name, qr, dpi, mmWidth, mmHeight, rotation, outputFormat, maxCharsLine1, maxCharsLine2 } =
       parseParams(req);
+
+    // Motor dinâmico (docs/plano-motor-dinamico-etiquetas.md §4): só é
+    // tentado quando a flag está ligada, a service role está configurada
+    // e `qr` é um UUID válido. Caso contrário (ou em qualquer falha
+    // elegível), retorna `null` e o fluxo legado abaixo segue idêntico.
+    const dynamicPngBuffer = await tryRenderDynamic({ qr }, req.requestId);
+    if (dynamicPngBuffer) {
+      return sendBadgeResponse(res, dynamicPngBuffer, outputFormat);
+    }
 
     let resolvedName = name;
     let resolvedQr = qr;
@@ -117,22 +145,7 @@ async function handleLegacyBadgeRequest(req, res) {
       maxCharsLine2,
     });
 
-    if (outputFormat === 'base64') {
-      const base64String = pngBuffer.toString('base64');
-      const dataUri = `data:image/png;base64,${base64String}`;
-      res.setHeader('Content-Type', 'application/json');
-      res.json({
-        success: true,
-        format: 'base64',
-        data: base64String,
-        dataUri,
-        mimeType: 'image/png',
-      });
-    } else {
-      res.setHeader('Content-Type', 'image/png');
-      res.setHeader('Content-Disposition', 'inline; filename="badge.png"');
-      res.send(pngBuffer);
-    }
+    return sendBadgeResponse(res, pngBuffer, outputFormat);
   } catch (err) {
     console.error('Error generating badge:', err);
     res.status(500).json({ error: 'Internal Server Error' });

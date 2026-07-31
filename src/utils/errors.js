@@ -25,6 +25,7 @@ class LayoutInvalidError extends FallbackEligibleError {}
 class LabelDataUnavailableError extends FallbackEligibleError {}
 class SupabaseTimeoutError extends FallbackEligibleError {}
 class SupabaseUnavailableError extends FallbackEligibleError {}
+class DynamicFlowBudgetExceededError extends FallbackEligibleError {}
 
 class NonFallbackError extends Error {
   constructor(message, statusCode, code) {
@@ -95,6 +96,7 @@ module.exports = {
   LabelDataUnavailableError,
   SupabaseTimeoutError,
   SupabaseUnavailableError,
+  DynamicFlowBudgetExceededError,
   NonFallbackError,
   InvalidRequestError,
   PayloadTooLargeError,

@@ -21,6 +21,7 @@ Thumbs.db
 # Env
 .env
 .env.*
+!.env.example
 
 # Build / cache
 .cache/

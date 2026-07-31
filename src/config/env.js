@@ -3,6 +3,7 @@
 require('dotenv').config();
 
 const packageJson = require('../../package.json');
+const { getRateLimitDefaults } = require('./rateLimitDefaults');
 
 function parseBoolean(value, defaultValue) {
   if (value === undefined || value === null || value === '') return defaultValue;
@@ -54,8 +55,10 @@ const env = {
   LABEL_LAYOUT_CACHE_TTL_SECONDS: parseIntOr(process.env.LABEL_LAYOUT_CACHE_TTL_SECONDS, 60),
   LABEL_CONTEXT_CACHE_TTL_SECONDS: parseIntOr(process.env.LABEL_CONTEXT_CACHE_TTL_SECONDS, 60),
   LABEL_RATE_LIMIT_WINDOW_MS: parseIntOr(process.env.LABEL_RATE_LIMIT_WINDOW_MS, 60000),
-  LABEL_RATE_LIMIT_MAX: process.env.LABEL_RATE_LIMIT_MAX,
-  LABEL_CONCURRENCY_LIMIT: process.env.LABEL_CONCURRENCY_LIMIT,
 };
+
+const envDefaults = getRateLimitDefaults(env.NODE_ENV);
+env.LABEL_RATE_LIMIT_MAX = parseIntOr(process.env.LABEL_RATE_LIMIT_MAX, envDefaults.rateLimitMax);
+env.LABEL_CONCURRENCY_LIMIT = parseIntOr(process.env.LABEL_CONCURRENCY_LIMIT, envDefaults.concurrencyLimit);
 
 module.exports = { env, parseBoolean, parseEventIdAllowlist, parseHostAllowlist, parseIntOr };

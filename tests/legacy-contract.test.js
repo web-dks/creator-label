@@ -102,6 +102,32 @@ test('legacy /badge contract and golden baseline', async (t) => {
     assert.deepEqual(json, { error: 'Missing required parameter: name' });
   });
 
+  await t.test('invalid/out-of-range dpi is clamped instead of crashing (docs §23 "DPI inválido")', async () => {
+    const tooHigh = await server.requestGet({ name: 'DPI Alto', dpi: 999999 });
+    assert.equal(tooHigh.status, 200, `unexpected status; stderr=${server.getStderr()}`);
+    assert.equal(tooHigh.headers['content-type'], 'image/png');
+
+    const negative = await server.requestGet({ name: 'DPI Negativo', dpi: -50 });
+    assert.equal(negative.status, 200);
+    assert.equal(negative.headers['content-type'], 'image/png');
+
+    const notANumber = await server.requestGet({ name: 'DPI Inválido', dpi: 'not-a-number' });
+    assert.equal(notANumber.status, 200);
+    assert.equal(notANumber.headers['content-type'], 'image/png');
+  });
+
+  await t.test('Supabase indisponível: /badge segue funcionando com o name recebido (docs §23 "Supabase indisponível")', async () => {
+    const res = await server.requestGet({
+      name: 'Nome Enviado Direto',
+      qr: 'SERVER_ERROR',
+      dpi: 300,
+      format: 'base64',
+    });
+    assert.equal(res.status, 200, `unexpected status; stderr=${server.getStderr()}`);
+    const json = JSON.parse(res.body.toString('utf8'));
+    assert.equal(json.success, true);
+  });
+
   await t.test('unknown participant omits the QR but still renders the requested name', async () => {
     const res = await server.requestGet({
       name: 'Nome Enviado',

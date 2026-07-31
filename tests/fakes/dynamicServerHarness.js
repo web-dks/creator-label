@@ -92,7 +92,9 @@ async function startDynamicEnabledServer({
   });
 
   const stderrChunks = [];
+  const stdoutChunks = [];
   child.stderr.on('data', (d) => stderrChunks.push(d));
+  child.stdout.on('data', (d) => stdoutChunks.push(d));
 
   await waitForServer(port);
 
@@ -123,6 +125,9 @@ async function startDynamicEnabledServer({
     },
     getStderr() {
       return Buffer.concat(stderrChunks).toString('utf8');
+    },
+    getStdout() {
+      return Buffer.concat(stdoutChunks).toString('utf8');
     },
   };
 }

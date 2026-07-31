@@ -29,6 +29,15 @@ function createFakePostgrestServer(rows) {
 
     res.setHeader('Content-Type', 'application/json');
 
+    if (id === 'SERVER_ERROR') {
+      // Simula Supabase indisponível: fetchLegacyParticipant deve engolir o
+      // erro e devolver null, preservando o comportamento legado de seguir
+      // renderizando com o `name` recebido (docs §23 "Contrato legado").
+      res.statusCode = 500;
+      res.end(JSON.stringify({ message: 'internal error', code: 'XX000' }));
+      return;
+    }
+
     if (wantsSingle) {
       if (match) {
         res.statusCode = 200;

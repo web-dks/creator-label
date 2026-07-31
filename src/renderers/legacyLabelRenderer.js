@@ -13,11 +13,8 @@
   tests continuam idênticos (ver docs/plano-motor-dinamico-etiquetas.md).
 */
 
-const fs = require('node:fs');
-const path = require('node:path');
 const QRCode = require('qrcode');
 const {
-  PROJECT_ROOT,
   MIN_DPI,
   MAX_DPI,
   VIRTUAL_W,
@@ -28,68 +25,7 @@ const {
   DEFAULT_MAX_CHARS_LINE1,
   DEFAULT_MAX_CHARS_LINE2,
 } = require('../config/constants');
-
-let CanvasLib;
-let useNapi = false;
-let registeredFontFamily = null;
-
-try {
-  CanvasLib = require('@napi-rs/canvas');
-  useNapi = true;
-} catch (err) {
-  try {
-    CanvasLib = require('canvas');
-  } catch (e) {
-    console.error('Failed to load canvas libraries. Install "@napi-rs/canvas" (preferred) or "canvas" as a fallback.');
-    process.exit(1);
-  }
-}
-
-function registerBundledFont() {
-  try {
-    const fontDir = path.join(PROJECT_ROOT, 'fonts');
-    const candidates = [
-      'arial.ttf',
-      'Arial.ttf',
-      'ARIAL.TTF',
-      'arial_black.ttf',
-      'ArialBlack.ttf',
-      'Arial-Black.ttf',
-      'DejaVuSans-Bold.ttf',
-      'DejaVuSansCondensed-Bold.ttf',
-      'Arial-Bold.ttf',
-      'ArialBold.ttf',
-    ];
-
-    const searchPaths = [fontDir, PROJECT_ROOT];
-    for (const searchDir of searchPaths) {
-      for (const file of candidates) {
-        const fontPath = path.join(searchDir, file);
-        if (!fs.existsSync(fontPath)) continue;
-        const familyName = file.toLowerCase().includes('arial') ? 'Arial' : 'BadgeBold';
-        try {
-          if (useNapi && CanvasLib.GlobalFonts && typeof CanvasLib.GlobalFonts.registerFromPath === 'function') {
-            CanvasLib.GlobalFonts.registerFromPath(fontPath, familyName);
-            return familyName;
-          }
-          if (!useNapi && typeof CanvasLib.registerFont === 'function') {
-            CanvasLib.registerFont(fontPath, { family: familyName, weight: 'bold' });
-            return familyName;
-          }
-        } catch (fontErr) {
-          console.error('Error registering font:', fontErr);
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Error during font registration:', err);
-  }
-  return null;
-}
-
-registeredFontFamily = registerBundledFont();
-console.log('Canvas library being used:', useNapi ? '@napi-rs/canvas' : 'canvas');
-console.log('Final registered font family:', registeredFontFamily);
+const { registeredFontFamily, createCanvas, getContext2d, loadImage, encodePng } = require('./canvasRuntime');
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -194,14 +130,6 @@ function wrapSubtitleLines(ctx, text, maxWidth, fontSizePx, fontFamily) {
   }
   if (line) lines.push(line);
   return lines.length ? lines : text ? [String(text)] : [];
-}
-
-function createCanvas(width, height) {
-  return CanvasLib.createCanvas(width, height);
-}
-
-function getContext2d(canvas) {
-  return canvas.getContext('2d');
 }
 
 async function renderBadgePng({
@@ -315,8 +243,7 @@ async function renderBadgePng({
     );
     if (qrY > maxQrY) qrY = maxQrY;
 
-    const img = useNapi ? await CanvasLib.loadImage(qrPngBuffer) : new CanvasLib.Image();
-    if (!useNapi) img.src = qrPngBuffer;
+    const img = await loadImage(qrPngBuffer);
     ctx.drawImage(img, qrX, qrY, qrRenderClamped, qrRenderClamped);
   }
 
@@ -341,10 +268,7 @@ async function renderBadgePng({
   finalCtx.drawImage(contentCanvas, 0, 0);
   finalCtx.restore();
 
-  if (useNapi && typeof finalCanvas.encode === 'function') {
-    return await finalCanvas.encode('png');
-  }
-  return finalCanvas.toBuffer('image/png');
+  return encodePng(finalCanvas);
 }
 
 module.exports = {

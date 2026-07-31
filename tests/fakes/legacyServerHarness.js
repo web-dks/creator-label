@@ -91,6 +91,9 @@ async function startLegacyServer() {
       ).toString();
       return requestJson({ host: '127.0.0.1', port, path: `/badge?${qs}`, method: 'GET' });
     },
+    async requestGetPath(urlPath) {
+      return requestJson({ host: '127.0.0.1', port, path: urlPath, method: 'GET' });
+    },
     async requestPost(params) {
       const payload = Buffer.from(JSON.stringify(params));
       return requestJson(

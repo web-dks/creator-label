@@ -11,8 +11,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
-    "test": "node --test tests/",
-    "test:golden": "node --test tests/golden/",
+    "test": "node --test",
+    "test:golden": "node --test tests/legacy-contract.test.js",
     "golden:capture": "node scripts/capture-golden.js",
     "golden:update": "node scripts/capture-golden.js --update"
   },

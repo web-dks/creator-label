@@ -1,0 +1,104 @@
+{
+  "capturedAt": "2026-07-31T00:12:51.009Z",
+  "nodeVersion": "v22.14.0",
+  "cases": {
+    "nome-curto-png": {
+      "params": {
+        "qr": "11111111-1111-1111-1111-111111111111",
+        "dpi": 300,
+        "rotation": 0,
+        "format": "png"
+      },
+      "responseSha256": "a22baaf081822a5f15f849deb84c8a7b07b0dbd2db8b97553fc6a74cd3afd0b6",
+      "pngSha256": "a22baaf081822a5f15f849deb84c8a7b07b0dbd2db8b97553fc6a74cd3afd0b6",
+      "pngBytes": 8679,
+      "contentType": "image/png"
+    },
+    "nome-medio-duas-linhas-png": {
+      "params": {
+        "qr": "22222222-2222-2222-2222-222222222222",
+        "dpi": 300,
+        "rotation": 0,
+        "format": "png"
+      },
+      "responseSha256": "4781f9915ff072a5de5aeb76f7b9cf72641e8011ccd6bbaf3b6ff517d141fb2b",
+      "pngSha256": "4781f9915ff072a5de5aeb76f7b9cf72641e8011ccd6bbaf3b6ff517d141fb2b",
+      "pngBytes": 24067,
+      "contentType": "image/png"
+    },
+    "nome-longo-png": {
+      "params": {
+        "qr": "33333333-3333-3333-3333-333333333333",
+        "dpi": 300,
+        "rotation": 0,
+        "format": "png"
+      },
+      "responseSha256": "c92a2e5b568122d60c2450db04b9a5f9222e084298a6ea48c7e536622efc0c95",
+      "pngSha256": "c92a2e5b568122d60c2450db04b9a5f9222e084298a6ea48c7e536622efc0c95",
+      "pngBytes": 33245,
+      "contentType": "image/png"
+    },
+    "regra-cps-com-subtitulo-png": {
+      "params": {
+        "qr": "44444444-4444-4444-4444-444444444444",
+        "dpi": 300,
+        "rotation": 0,
+        "format": "png"
+      },
+      "responseSha256": "f7f4802626f1637a691b1613c41eb75692efd4b4138c666775a9bd307a724cbd",
+      "pngSha256": "f7f4802626f1637a691b1613c41eb75692efd4b4138c666775a9bd307a724cbd",
+      "pngBytes": 28994,
+      "contentType": "image/png"
+    },
+    "duas-linhas-sem-qr-base64": {
+      "params": {
+        "name": "Beatriz Nogueira Lima Santos",
+        "dpi": 300,
+        "rotation": 0,
+        "format": "base64"
+      },
+      "responseSha256": "cd8e4bef01e63bd47888cdb49ed6d759e0f4b7add87a1fe645e9f63c0551ba8c",
+      "pngSha256": "e7ff14f69bc200502350c507fa01e173c108dc62a6b2ce2a48b069a29ca30bbe",
+      "pngBytes": 28840,
+      "contentType": "application/json; charset=utf-8"
+    },
+    "sem-qr-nome-literal-png": {
+      "params": {
+        "name": "Visitante Avulso",
+        "dpi": 300,
+        "rotation": 0,
+        "format": "png"
+      },
+      "responseSha256": "25564e78053e0794488e851d60af63d9abfa1b9b460a12ec05d1f5e165ece165",
+      "pngSha256": "25564e78053e0794488e851d60af63d9abfa1b9b460a12ec05d1f5e165ece165",
+      "pngBytes": 19346,
+      "contentType": "image/png"
+    },
+    "base64-nome-curto": {
+      "params": {
+        "qr": "11111111-1111-1111-1111-111111111111",
+        "dpi": 300,
+        "rotation": 0,
+        "format": "base64"
+      },
+      "responseSha256": "0e048cc1c5a2059e92935e88b1bbe3e222bf6eeb115e58a77c1f75336c8a8f19",
+      "pngSha256": "a22baaf081822a5f15f849deb84c8a7b07b0dbd2db8b97553fc6a74cd3afd0b6",
+      "pngBytes": 8679,
+      "contentType": "application/json; charset=utf-8"
+    },
+    "aliases-max-line-rotate": {
+      "params": {
+        "qr": "33333333-3333-3333-3333-333333333333",
+        "dpi": 300,
+        "rotate": 0,
+        "format": "png",
+        "max_line1": 12,
+        "max_line2": 12
+      },
+      "responseSha256": "2679a54ff5e0d8b7baa1ad01b927d12a969c5e4b6393bf54d7f72d19b761c9d0",
+      "pngSha256": "2679a54ff5e0d8b7baa1ad01b927d12a969c5e4b6393bf54d7f72d19b761c9d0",
+      "pngBytes": 25482,
+      "contentType": "image/png"
+    }
+  }
+}

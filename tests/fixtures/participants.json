@@ -1,0 +1,32 @@
+[
+  {
+    "id": "11111111-1111-1111-1111-111111111111",
+    "name": "Ana",
+    "extra_answers": null,
+    "_case": "nome-curto"
+  },
+  {
+    "id": "22222222-2222-2222-2222-222222222222",
+    "name": "Carlos Eduardo Ferreira",
+    "extra_answers": null,
+    "_case": "nome-medio-duas-linhas"
+  },
+  {
+    "id": "33333333-3333-3333-3333-333333333333",
+    "name": "Maria Aparecida de Souza Nascimento Oliveira",
+    "extra_answers": null,
+    "_case": "nome-longo"
+  },
+  {
+    "id": "44444444-4444-4444-4444-444444444444",
+    "name": "João Pedro Alves",
+    "extra_answers": "{\"Área de atuação CPS\": \"Etec\", \"Unidade\": \"Etec São Paulo\"}",
+    "_case": "regra-cps-com-subtitulo"
+  },
+  {
+    "id": "55555555-5555-5555-5555-555555555555",
+    "name": "Beatriz Nogueira Lima Santos",
+    "extra_answers": null,
+    "_case": "duas-linhas-sem-qr"
+  }
+]

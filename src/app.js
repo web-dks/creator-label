@@ -9,6 +9,7 @@ const { requestTimeoutMiddleware } = require('./middleware/requestTimeout');
 const { errorHandlerMiddleware } = require('./middleware/errorHandler');
 const healthRoutes = require('./routes/healthRoutes');
 const legacyBadgeRoutes = require('./routes/legacyBadgeRoutes');
+const badgeV2Routes = require('./routes/badgeV2Routes');
 
 const REQUEST_TIMEOUT_MS = 10000;
 const JSON_BODY_LIMIT = '100kb';
@@ -32,6 +33,7 @@ app.use(buildRateLimitMiddleware());
 app.use(concurrencyLimitMiddleware);
 
 app.use(legacyBadgeRoutes);
+app.use(badgeV2Routes);
 
 app.use(errorHandlerMiddleware);
 

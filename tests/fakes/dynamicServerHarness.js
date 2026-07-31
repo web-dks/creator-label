@@ -67,6 +67,8 @@ async function startDynamicEnabledServer({
   layoutsByEventId = {},
   labelDataByParticipantId = {},
   eventIdAllowlist = '',
+  apiKey = '',
+  dynamicEnabled = true,
 } = {}) {
   const fakeDb = await createFakeDynamicSupabaseServer({ participants, layoutsByEventId, labelDataByParticipantId });
   const port = await getFreePort();
@@ -81,9 +83,10 @@ async function startDynamicEnabledServer({
       SUPABASE_SERVICE_ROLE_KEY: 'local-fake-service-role-key',
       SUPABASE_PARTICIPANTS_TABLE: 'participants',
       SUPABASE_SCHEMA: 'public',
-      LABEL_DYNAMIC_LAYOUT_ENABLED: 'true',
+      LABEL_DYNAMIC_LAYOUT_ENABLED: dynamicEnabled ? 'true' : 'false',
       LABEL_DYNAMIC_EVENT_IDS: eventIdAllowlist,
       LABEL_LOGO_ALLOWED_HOSTS: '',
+      LABEL_API_KEY: apiKey,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -100,6 +103,19 @@ async function startDynamicEnabledServer({
         Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))
       ).toString();
       return requestJson({ host: '127.0.0.1', port, path: `/badge?${qs}`, method: 'GET' });
+    },
+    async requestPostPath(urlPath, payload, headers = {}) {
+      const body = Buffer.from(JSON.stringify(payload));
+      return requestJson(
+        {
+          host: '127.0.0.1',
+          port,
+          path: urlPath,
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Content-Length': body.length, ...headers },
+        },
+        body
+      );
     },
     async close() {
       child.kill();

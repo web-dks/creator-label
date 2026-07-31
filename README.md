@@ -16,6 +16,30 @@ Parâmetros aceitos (e aliases): `name`, `qr`, `dpi`, `rotation`/`rotate`, `form
 
 Este contrato é preservado integralmente pela Fase 3 — ver `docs/plano-motor-dinamico-etiquetas.md`.
 
+## Rota nova: `POST /v2/badges/render`
+
+Renderiza **somente** o layout publicado do evento pelo motor dinâmico — nunca cai no renderer legado. Requer o motor habilitado (`LABEL_DYNAMIC_LAYOUT_ENABLED=true` e `SUPABASE_SERVICE_ROLE_KEY` configurada) e autenticação:
+
+```
+Authorization: Bearer <LABEL_API_KEY>
+```
+
+O segredo é comparado em tempo constante (`src/utils/timingSafeEqual.js`). Sem `LABEL_API_KEY` configurada no ambiente, a rota fica bloqueada por padrão (fail closed).
+
+Payload:
+
+```json
+{ "participant_id": "uuid", "format": "base64" }
+```
+
+`format` é opcional (`base64` por padrão, ou `png`). Respostas:
+
+- `200`: mesmo envelope PNG/Base64 da rota legada.
+- `400`: payload inválido (`participant_id` não é UUID, `format` não suportado).
+- `401`: Bearer ausente ou inválido.
+- `404`: participante/evento/layout não encontrado ou não elegível (nunca fallback).
+- `502`/`503`: layout inválido ou dependência do Supabase temporariamente indisponível.
+
 ## Requisitos e versões congeladas
 
 Para reproduzir exatamente o baseline visual capturado em `golden/`:

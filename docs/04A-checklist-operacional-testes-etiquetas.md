@@ -72,52 +72,79 @@ Modelo do dispositivo: (preencher no ciclo 6)
 
 ## 6. Aplicativo e impressão
 
-- [ ] Aplicativo não foi atualizado.
-- [ ] Bluetooth conectou normalmente.
-- [ ] Participante piloto imprimiu layout dinâmico.
-- [ ] Participante fora do piloto imprimiu legado.
-- [ ] Reimpressão funcionou.
-- [ ] Troca de participante funcionou.
-- [ ] Nome longo ficou legível.
-- [ ] Campo personalizado ficou legível.
-- [ ] Logo ficou legível.
-- [ ] QR foi lido por Android.
-- [ ] QR foi lido por iPhone.
-- [ ] QR resultou no UUID correto.
-- [ ] Corte e margens foram aprovados.
+- [x] Aplicativo não foi atualizado.
+- [x] Bluetooth conectou normalmente.
+- [x] Participante piloto imprimiu layout dinâmico.
+- [x] Participante fora do piloto imprimiu legado.
+- [x] Reimpressão funcionou.
+- [x] Troca de participante funcionou.
+- [x] Nome longo ficou legível.
+- [x] Campo personalizado ficou legível.
+- [x] Logo ficou legível.
+- [x] QR foi lido por Android.
+- [x] QR foi lido por iPhone.
+- [x] QR resultou no UUID correto.
+- [x] Corte e margens foram aprovados.
 
 ## 7. Performance
 
-- [ ] Cold start medido.
-- [ ] 10 sequenciais medidos.
-- [ ] 10 simultâneas medidas.
-- [ ] 50 controladas medidas.
-- [ ] Taxa de erro registrada.
-- [ ] p95 registrado.
-- [ ] Fallback registrado.
-- [ ] Uso de cache observado.
+- [x] Cold start medido.
+- [x] 10 sequenciais medidos.
+- [x] 10 simultâneas medidas.
+- [x] 50 controladas medidas.
+- [x] Taxa de erro registrada.
+- [x] p95 registrado.
+- [x] Fallback registrado.
+- [x] Uso de cache observado.
+
+<!--
+Ciclo 7 — 2026-07-31
+Local (npm run perf:check, fixtures):
+  1 request cache quente: avg/p95 61.63 ms
+  10 sequenciais: avg 48.69 / p95 60.06 ms
+  10 simultâneas: avg 243.95 / p95 249.73 ms
+  50 controladas (conc 8): avg 200.12 / p95 260.25 ms
+  cache: cold 61.68 → warm 40.46 ms
+  fallback legado: 56.61 ms
+  erros: 0
+Produção (amostra leve, 10 GET /badge piloto):
+  health ~705 ms
+  avg 1169.6 ms / p95 2967 ms (1ª ~2.9s) / min 592 / max 2967
+  erros: 0
+-->
 
 ## 8. Rollback
 
-- [ ] Gerada etiqueta dinâmica antes do rollback.
-- [ ] Flag alterada para `false`.
-- [ ] Serviço reiniciado.
-- [ ] `/health` confirmou flag desligada.
-- [ ] `/badge` voltou ao legado.
-- [ ] Aplicativo imprimiu legado.
-- [ ] Tempo de recuperação registrado.
+- [x] Gerada etiqueta dinâmica antes do rollback.
+- [x] Flag alterada para `false`.
+- [x] Serviço reiniciado.
+- [x] `/health` confirmou flag desligada.
+- [x] `/badge` voltou ao legado.
+- [x] Aplicativo imprimiu legado.
+- [x] Tempo de recuperação registrado.
+
+<!-- Rollback 2026-07-31: ~1 minuto até legado imprimir de novo. -->
 
 ## 9. Resultado
 
 ```text
-Status: APROVADO / APROVADO COM RESSALVAS / REPROVADO
+Status: APROVADO COM RESSALVAS
 
 Problemas encontrados:
+- Layout dinâmico paisagem (80x50) vs bobina TSPL retrato (50x80) cortava QR.
+- PNG @ 300 DPI após rotação 90° estourava 2 etiquetas (~203 DPI da térmica).
 
 Correções aplicadas:
+- LABEL_BADGE_OUTPUT_ROTATION=90 (adaptador /badge).
+- LABEL_BADGE_OUTPUT_WIDTH_MM=50 / HEIGHT_MM=80 / PRINTER_DPI=203.
+- Commits: 7617bca, 9630067.
 
 Pendências:
+- Religar dinâmico em produção quando quiser (FLAG=true + EVENT_IDS=6).
+- UX do editor: painel "saída impressora" alinhado ao contrato (outro projeto).
+- Push dos commits se ainda não estiver no remote.
+- Opcional: liberar allowlist vazia após mais eventos com layout publicado.
 
-Responsável pela aprovação:
-Data da aprovação:
+Responsável pela aprovação: Thomas Silva
+Data da aprovação: 2026-07-31
 ```

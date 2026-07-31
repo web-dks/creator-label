@@ -54,6 +54,24 @@ test('badgeService.tryRenderDynamic orchestration', async (t) => {
     env.LABEL_DYNAMIC_LAYOUT_ENABLED = false;
   });
 
+  await t.test('returns null when the service role is not configured, even with the flag on', async () => {
+    const { reinitClientsForTests } = require('../src/repositories/supabaseClients');
+    const originalKey = env.SUPABASE_SERVICE_ROLE_KEY;
+    env.SUPABASE_SERVICE_ROLE_KEY = '';
+    reinitClientsForTests();
+    env.LABEL_DYNAMIC_LAYOUT_ENABLED = true;
+
+    const result = await badgeService.tryRenderDynamic(
+      { qr: 'aaaaaaaa-0000-0000-0000-000000000001' },
+      'req-no-service-role'
+    );
+
+    env.LABEL_DYNAMIC_LAYOUT_ENABLED = false;
+    env.SUPABASE_SERVICE_ROLE_KEY = originalKey;
+    reinitClientsForTests();
+    assert.equal(result, null);
+  });
+
   await t.test('renders a dynamic PNG end-to-end when everything checks out', async () => {
     env.LABEL_DYNAMIC_LAYOUT_ENABLED = true;
     const png = await badgeService.tryRenderDynamic(

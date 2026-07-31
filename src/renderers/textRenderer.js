@@ -49,8 +49,7 @@ function wrapWords(ctx, words, maxWidthPx, maxLines) {
   return { lines, overflow: idx < words.length };
 }
 
-function truncateLineWithEllipsis(ctx, line, maxWidthPx) {
-  if (ctx.measureText(line).width <= maxWidthPx) return line;
+function trimToFitWithEllipsis(ctx, line, maxWidthPx) {
   let text = line;
   while (text.length > 0 && ctx.measureText(`${text}${ELLIPSIS}`).width > maxWidthPx) {
     text = text.slice(0, -1);
@@ -58,9 +57,19 @@ function truncateLineWithEllipsis(ctx, line, maxWidthPx) {
   return text.length > 0 ? `${text}${ELLIPSIS}` : ELLIPSIS;
 }
 
+/** Sem overflow (todas as palavras couberam), mas uma palavra isolada pode
+ * ainda ultrapassar a largura da caixa. */
+function truncateLineWithEllipsis(ctx, line, maxWidthPx) {
+  if (ctx.measureText(line).width <= maxWidthPx) return line;
+  return trimToFitWithEllipsis(ctx, line, maxWidthPx);
+}
+
+/** Há overflow (sobrou texto fora das linhas visíveis): sempre garante
+ * reticências, cortando mais caracteres da própria linha se preciso —
+ * mesmo que a linha já coubesse sozinha sem elas. */
 function appendEllipsisIfRoom(ctx, line, maxWidthPx) {
   if (ctx.measureText(`${line}${ELLIPSIS}`).width <= maxWidthPx) return `${line}${ELLIPSIS}`;
-  return truncateLineWithEllipsis(ctx, line, maxWidthPx);
+  return trimToFitWithEllipsis(ctx, line, maxWidthPx);
 }
 
 /**

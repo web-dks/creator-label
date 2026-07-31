@@ -34,6 +34,13 @@ function createFakeDynamicSupabaseServer({ participants = [], layoutsByEventId =
         return;
       }
 
+      if (id === 'SERVER_ERROR') {
+        // Erro genérico (não timeout) — deve virar SupabaseUnavailableError.
+        res.statusCode = 500;
+        res.end(JSON.stringify({ message: 'internal error', code: 'XX000' }));
+        return;
+      }
+
       const match = id ? participantsById.get(id) : undefined;
       const wantsSingle = String(req.headers['accept'] || '').includes('vnd.pgrst.object+json');
 

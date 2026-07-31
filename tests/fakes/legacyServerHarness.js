@@ -24,7 +24,9 @@ function getFreePort() {
 function waitForServer(port, attempts = 60) {
   return new Promise((resolve, reject) => {
     const tryOnce = (left) => {
-      const req = http.get({ host: '127.0.0.1', port, path: '/badge', timeout: 500 }, (res) => {
+      // /health fica fora de rate limit/concorrência (src/app.js), então o
+      // polling de prontidão nunca consome a cota de testes de rate limit.
+      const req = http.get({ host: '127.0.0.1', port, path: '/health', timeout: 500 }, (res) => {
         res.resume();
         resolve();
       });
@@ -61,7 +63,7 @@ function requestJson(options, body) {
  * Boots the current (unmodified) `index.js` against a local fake
  * PostgREST server, with no dependency on any real Supabase project.
  */
-async function startLegacyServer() {
+async function startLegacyServer(extraEnv = {}) {
   const fakeDb = await createFakePostgrestServer(participants);
   const port = await getFreePort();
 
@@ -74,6 +76,7 @@ async function startLegacyServer() {
       SUPABASE_KEY: 'local-fake-anon-key',
       SUPABASE_PARTICIPANTS_TABLE: 'participants',
       SUPABASE_SCHEMA: 'public',
+      ...extraEnv,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });

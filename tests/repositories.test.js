@@ -32,6 +32,7 @@ test('dynamic repositories (participant context + label RPCs)', async (t) => {
     LayoutNotPublishedError,
     LabelDataUnavailableError,
     SupabaseTimeoutError,
+    SupabaseUnavailableError,
   } = require('../src/utils/errors');
 
   await t.test('fetchParticipantContext resolves id -> event_id only', async () => {
@@ -59,6 +60,10 @@ test('dynamic repositories (participant context + label RPCs)', async (t) => {
       () => participantRepository.fetchParticipantContext('aaaaaaaa-0000-0000-0000-000000000004'),
       EventIdMissingError
     );
+  });
+
+  await t.test('fetchParticipantContext throws SupabaseUnavailableError on a generic (non-timeout) Supabase error', async () => {
+    await assert.rejects(() => participantRepository.fetchParticipantContext('SERVER_ERROR'), SupabaseUnavailableError);
   });
 
   await t.test('fetchParticipantContext throws SupabaseTimeoutError after ~2s when Supabase hangs', async () => {

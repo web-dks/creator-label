@@ -87,6 +87,18 @@ function applyRotation(canvas, widthPx, heightPx, rotation) {
   return finalCanvas;
 }
 
+/** Redimensiona o canvas exatamente para targetW×targetH (stretch). */
+function scaleCanvasToSize(canvas, targetW, targetH) {
+  if (!targetW || !targetH) return canvas;
+  if (canvas.width === targetW && canvas.height === targetH) return canvas;
+  const out = createCanvas(targetW, targetH);
+  const ctx = getContext2d(out);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, targetW, targetH);
+  ctx.drawImage(canvas, 0, 0, targetW, targetH);
+  return out;
+}
+
 /**
  * Renderiza a etiqueta dinâmica em PNG. `layoutResponse` deve já ter
  * passado por `validateLayoutResponse`. Retorna o buffer PNG final.
@@ -115,8 +127,10 @@ async function renderDynamicLabelPng(layoutResponse, labelData, options = {}) {
     : allowedRotations.includes(fromProfile)
       ? fromProfile
       : 0;
-  const finalCanvas = applyRotation(canvas, scale.widthPx, scale.heightPx, rotation);
+  let finalCanvas = applyRotation(canvas, scale.widthPx, scale.heightPx, rotation);
+  // options.outputWidthPx/HeightPx: dots da bobina (TSPL) após rotação.
+  finalCanvas = scaleCanvasToSize(finalCanvas, options.outputWidthPx, options.outputHeightPx);
   return encodePng(finalCanvas);
 }
 
-module.exports = { renderDynamicLabelPng, computeScale, applyRotation };
+module.exports = { renderDynamicLabelPng, computeScale, applyRotation, scaleCanvasToSize };

@@ -19,15 +19,15 @@ test('GET /badge end-to-end with LABEL_DYNAMIC_LAYOUT_ENABLED=true', async (t) =
   });
   t.after(() => server.close());
 
-  await t.test('renders /badge dynamic PNG rotated for TSPL 50x80 (591x945 by default)', async () => {
+  await t.test('renders /badge dynamic PNG fitted to TSPL 50x80 @ 203dpi (~400x639)', async () => {
     const res = await server.requestGet({ qr: 'aaaaaaaa-0000-0000-0000-000000000001' });
     assert.equal(res.status, 200);
     assert.equal(res.headers['content-type'], 'image/png');
     const dims = readPngDimensions(res.body);
-    // Editor/layout permanece 80x50; /badge gira para o contrato do app
-    // (tsc.size width:50 height:80). Configurável via LABEL_BADGE_OUTPUT_ROTATION.
-    assert.equal(dims.width, 591);
-    assert.equal(dims.height, 945);
+    // Design 80x50@300 → rotate 90 → scale to bobina 50x80 @ 203 DPI
+    // (tsc.size width:50 height:80). Evita estourar 2 etiquetas.
+    assert.equal(dims.width, 400);
+    assert.equal(dims.height, 639);
   });
 
   await t.test('honors format=base64 using the exact legacy envelope shape', async () => {
@@ -39,8 +39,8 @@ test('GET /badge end-to-end with LABEL_DYNAMIC_LAYOUT_ENABLED=true', async (t) =
     assert.equal(payload.format, 'base64');
     assert.equal(payload.mimeType, 'image/png');
     const dims = readPngDimensions(Buffer.from(payload.data, 'base64'));
-    assert.equal(dims.width, 591);
-    assert.equal(dims.height, 945);
+    assert.equal(dims.width, 400);
+    assert.equal(dims.height, 639);
   });
 
   await t.test('falls back to the legacy 400 contract when the participant is unknown and no name is given', async () => {
@@ -68,16 +68,17 @@ test('GET /badge end-to-end with LABEL_DYNAMIC_LAYOUT_ENABLED=true', async (t) =
   });
 });
 
-test('GET /badge dynamic with LABEL_BADGE_OUTPUT_ROTATION=0 keeps design orientation', async (t) => {
+test('GET /badge dynamic with printer fit disabled keeps design orientation', async (t) => {
   const server = await startDynamicEnabledServer({
     participants: contextParticipants,
     layoutsByEventId,
     labelDataByParticipantId,
     badgeOutputRotation: 0,
+    badgePrinterDpi: 0,
   });
   t.after(() => server.close());
 
-  await t.test('returns 945x591 when badge output rotation is disabled', async () => {
+  await t.test('returns 945x591 when rotation and printer fit are disabled', async () => {
     const res = await server.requestGet({ qr: 'aaaaaaaa-0000-0000-0000-000000000001' });
     assert.equal(res.status, 200);
     const dims = readPngDimensions(res.body);

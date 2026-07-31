@@ -8,7 +8,7 @@
  * erro própria decidida pelo `badgeV2Controller`.
  */
 
-const { env } = require('../config/env');
+const { env, mmToPrinterDots } = require('../config/env');
 const { fetchParticipantContext, isDynamicSupabaseConfigured } = require('../repositories/participantRepository');
 const { getPublishedLayout, resolveParticipantLabelData } = require('../repositories/labelRpcRepository');
 const { validateLayoutResponse } = require('../validators/layoutContractValidator');
@@ -76,6 +76,8 @@ async function renderDynamicLabel(participantId, requestId, options = {}) {
   const pngBuffer = await renderDynamicLabelPng(layoutResponse, labelData, {
     requestId,
     outputRotation: options.outputRotation,
+    outputWidthPx: options.outputWidthPx,
+    outputHeightPx: options.outputHeightPx,
   });
 
   logger.info('badge-service:dynamic-render-success', {
@@ -95,17 +97,23 @@ async function renderDynamicLabel(participantId, requestId, options = {}) {
  * normalmente. Erros que NÃO são `FallbackEligibleError` propagam para o
  * chamador decidir a resposta HTTP (nunca viram fallback silencioso).
  *
- * Aplica `LABEL_BADGE_OUTPUT_ROTATION` (default 90) para alinhar o PNG ao
- * contrato TSPL do app atual (`size(width:50, height:80)`), sem alterar
- * o layout de design nem a rota `/v2`.
+ * Aplica `LABEL_BADGE_OUTPUT_ROTATION` (default 90) e redimensiona para
+ * `LABEL_BADGE_OUTPUT_*_MM` @ `LABEL_BADGE_PRINTER_DPI` (default 50×80 @
+ * 203 DPI), alinhando ao `tsc.size(width:50, height:80)` do app sem
+ * alterar o layout de design nem a rota `/v2`.
  */
 async function tryRenderDynamic(params, requestId) {
   if (!isDynamicEligible(params)) return null;
 
   const startedAt = Date.now();
   try {
+    const printerDpi = env.LABEL_BADGE_PRINTER_DPI;
+    const outputWidthPx = mmToPrinterDots(env.LABEL_BADGE_OUTPUT_WIDTH_MM, printerDpi);
+    const outputHeightPx = mmToPrinterDots(env.LABEL_BADGE_OUTPUT_HEIGHT_MM, printerDpi);
     const result = await renderDynamicLabel(params.qr, requestId, {
       outputRotation: env.LABEL_BADGE_OUTPUT_ROTATION,
+      outputWidthPx,
+      outputHeightPx,
     });
     return result.pngBuffer;
   } catch (err) {

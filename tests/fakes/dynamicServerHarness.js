@@ -70,6 +70,7 @@ async function startDynamicEnabledServer({
   apiKey = '',
   dynamicEnabled = true,
   badgeOutputRotation,
+  badgePrinterDpi,
 } = {}) {
   const fakeDb = await createFakeDynamicSupabaseServer({ participants, layoutsByEventId, labelDataByParticipantId });
   const port = await getFreePort();
@@ -90,6 +91,9 @@ async function startDynamicEnabledServer({
   // Rotação de saída do /badge dinâmico (TSPL 50x80). Omitir = default do serviço.
   if (badgeOutputRotation !== undefined && badgeOutputRotation !== null) {
     childEnv.LABEL_BADGE_OUTPUT_ROTATION = String(badgeOutputRotation);
+  }
+  if (badgePrinterDpi !== undefined && badgePrinterDpi !== null) {
+    childEnv.LABEL_BADGE_PRINTER_DPI = String(badgePrinterDpi);
   }
 
   const child = spawn(process.execPath, ['index.js'], {

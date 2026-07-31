@@ -14,7 +14,8 @@
     "test": "node --test",
     "test:golden": "node --test tests/legacy-contract.test.js",
     "golden:capture": "node scripts/capture-golden.js",
-    "golden:update": "node scripts/capture-golden.js --update"
+    "golden:update": "node scripts/capture-golden.js --update",
+    "perf:check": "node scripts/perf-check.js"
   },
   "dependencies": {
     "@napi-rs/canvas": "0.1.100",

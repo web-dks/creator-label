@@ -1,0 +1,58 @@
+{
+  "generatedAt": "2026-07-31T01:21:10.215Z",
+  "nodeVersion": "v22.14.0",
+  "scenarios": [
+    {
+      "label": "1 request (cache quente)",
+      "count": 1,
+      "avgMs": 64.99,
+      "p95Ms": 64.99,
+      "minMs": 64.99,
+      "maxMs": 64.99,
+      "avgResponseBytes": 17127
+    },
+    {
+      "label": "10 sequenciais",
+      "count": 10,
+      "avgMs": 50.56,
+      "p95Ms": 56.53,
+      "minMs": 45.82,
+      "maxMs": 56.53,
+      "avgResponseBytes": 17127
+    },
+    {
+      "label": "10 simultâneas",
+      "count": 10,
+      "avgMs": 169.29,
+      "p95Ms": 212.2,
+      "minMs": 133.65,
+      "maxMs": 212.2,
+      "avgResponseBytes": 17127
+    },
+    {
+      "label": "50 controladas (concorrência 8)",
+      "count": 50,
+      "avgMs": 116.32,
+      "p95Ms": 152.43,
+      "minMs": 82.57,
+      "maxMs": 158.6,
+      "avgResponseBytes": 17127
+    }
+  ],
+  "resourceUsage": {
+    "note": "medido no processo Node único que hospeda src/app.js diretamente (sem child process); indicativo, não é um SLA de produção",
+    "rssBeforeMB": 99.7,
+    "rssAfterMB": 121.4,
+    "heapUsedAfterMB": 18.1,
+    "cpuUserMs": 4140,
+    "cpuSystemMs": 62
+  },
+  "cacheEffect": {
+    "coldMs": 47.83,
+    "warmMs": 46.92
+  },
+  "fallbackEffect": {
+    "fallbackMs": 54.38,
+    "fullyDynamicMs": 64.99
+  }
+}

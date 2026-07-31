@@ -8,7 +8,8 @@ em `docs/03-spec-creator-label-motor-dinamico-atualizada.md` §25.
 
 Estado no momento desta validação:
 
-- Branch: `main`, commit `PENDING_COMMIT` (HEAD — resiliência do lookup legado).
+- Branch: `main`, commit do ajuste de resiliência: `42c461e`
+  (`fix: add timeout and abort to legacy participant lookup`).
 - `LABEL_DYNAMIC_LAYOUT_ENABLED=false` em `.env.example` e `render.yaml`
   (nenhum evento habilitado em produção).
 - Suíte de testes: **149/149 passando**, 100% via `node --test`.
@@ -258,7 +259,8 @@ npm test          → 149/149 pass
 npm run test:golden → 24/24 pass (8 golden GET + 8 POST + contrato)
 ```
 
-Commit final deste ajuste: ver cabeçalho deste documento (HEAD).
+Commit final deste ajuste: `42c461e`
+(`fix: add timeout and abort to legacy participant lookup`).
 
 ---
 

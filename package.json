@@ -5,16 +5,23 @@
   "description": "REST API to generate PNG badge (50x80mm) with name and QR",
   "main": "index.js",
   "license": "MIT",
+  "engines": {
+    "node": "22.14.0"
+  },
   "scripts": {
     "start": "node index.js",
-    "dev": "node index.js"
+    "dev": "node index.js",
+    "test": "node --test tests/",
+    "test:golden": "node --test tests/golden/",
+    "golden:capture": "node scripts/capture-golden.js",
+    "golden:update": "node scripts/capture-golden.js --update"
   },
   "dependencies": {
-    "@napi-rs/canvas": "^0.1.54",
-    "@supabase/supabase-js": "^2.57.4",
-    "dotenv": "^17.2.2",
-    "express": "^4.19.2",
-    "qrcode": "^1.5.4"
+    "@napi-rs/canvas": "0.1.100",
+    "@supabase/supabase-js": "2.111.0",
+    "dotenv": "17.4.2",
+    "express": "4.22.2",
+    "qrcode": "1.5.4"
   },
   "optionalDependencies": {
     "canvas": "^2.11.2"

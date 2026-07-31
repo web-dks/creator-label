@@ -1,6 +1,5 @@
 # Node
 node_modules/
-package-lock.json
 pnpm-lock.yaml
 yarn.lock
 
@@ -27,6 +26,9 @@ Thumbs.db
 .cache/
 dist/
 coverage/
+
+# Evidências locais da auditoria AS-IS (dados sintéticos)
+audit-evidence/
 
 # Windows special files
 NUL

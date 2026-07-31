@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: creator-label
+    runtime: node
+    plan: starter
+    region: oregon
+    branch: main
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: NODE_VERSION
+        value: 22.14.0
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      # Feature flag do motor dinâmico — DEVE começar desligada em todo deploy.
+      # Ativar manualmente no painel do Render só após aprovação do primeiro
+      # evento piloto (ver docs/plano-motor-dinamico-etiquetas.md).
+      - key: LABEL_DYNAMIC_LAYOUT_ENABLED
+        value: "false"
+      - key: LABEL_DYNAMIC_EVENT_IDS
+        value: ""
+      # Segredos — definir manualmente no painel do Render, nunca neste arquivo.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: LABEL_API_KEY
+        sync: false
+      - key: LABEL_LOGO_ALLOWED_HOSTS
+        sync: false
+      - key: LABEL_LAYOUT_CACHE_TTL_SECONDS
+        value: "60"
+      - key: LABEL_CONTEXT_CACHE_TTL_SECONDS
+        value: "60"
+      - key: LABEL_RATE_LIMIT_WINDOW_MS
+        value: "60000"
+      - key: LABEL_RATE_LIMIT_MAX
+        value: "600"
+      - key: LABEL_CONCURRENCY_LIMIT
+        value: "40"

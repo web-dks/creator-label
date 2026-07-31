@@ -19,6 +19,8 @@ const { URL } = require('node:url');
 
 function createFakePostgrestServer(rows) {
   const byId = new Map(rows.map((row) => [row.id, row]));
+  /** Estado observável pelos testes de timeout/cancelamento do lookup legado. */
+  const hangState = { received: false, aborted: false };
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
@@ -28,6 +30,16 @@ function createFakePostgrestServer(rows) {
     const wantsSingle = String(req.headers['accept'] || '').includes('vnd.pgrst.object+json');
 
     res.setHeader('Content-Type', 'application/json');
+
+    if (id === 'HANG_FOREVER') {
+      // Nunca responde — usado para testar withTimeout (2s) + abortSignal
+      // em fetchLegacyParticipant. A conexão abortada marca hangState.aborted.
+      hangState.received = true;
+      req.on('close', () => {
+        if (!res.writableEnded) hangState.aborted = true;
+      });
+      return;
+    }
 
     if (id === 'SERVER_ERROR') {
       // Simula Supabase indisponível: fetchLegacyParticipant deve engolir o
@@ -66,6 +78,7 @@ function createFakePostgrestServer(rows) {
       resolve({
         server,
         url: `http://127.0.0.1:${port}`,
+        hangState,
         close: () => new Promise((res2) => server.close(() => res2())),
       });
     });

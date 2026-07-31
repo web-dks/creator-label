@@ -24,11 +24,20 @@ async function fetchLegacyParticipant(participantId) {
   const client = getLegacyClient();
   if (!client) return null;
   try {
-    const { data, error } = await client
-      .from(env.SUPABASE_PARTICIPANTS_TABLE)
-      .select('id,name,extra_answers')
-      .eq('id', participantId)
-      .maybeSingle();
+    // Mesmo padrão do motor dinâmico (timeout 2s + abortSignal). Em
+    // timeout, erro Supabase ou rede: engole e devolve null — o
+    // controller legado segue com o `name` do request (nunca propaga).
+    const { data, error } = await withTimeout(
+      (signal) =>
+        client
+          .from(env.SUPABASE_PARTICIPANTS_TABLE)
+          .select('id,name,extra_answers')
+          .eq('id', participantId)
+          .abortSignal(signal)
+          .maybeSingle(),
+      SUPABASE_OPERATION_TIMEOUT_MS,
+      'fetchLegacyParticipant timed out'
+    );
     if (error) {
       console.error('Supabase query error:', error.message);
       return null;

@@ -8,10 +8,12 @@ em `docs/03-spec-creator-label-motor-dinamico-atualizada.md` §25.
 
 Estado no momento desta validação:
 
-- Branch: `main`, commit `3b38ae6` (HEAD).
+- Branch: `main`, commit `PENDING_COMMIT` (HEAD — resiliência do lookup legado).
 - `LABEL_DYNAMIC_LAYOUT_ENABLED=false` em `.env.example` e `render.yaml`
   (nenhum evento habilitado em produção).
-- Suíte de testes: **144/144 passando**, 100% via `node --test`.
+- Suíte de testes: **149/149 passando**, 100% via `node --test`.
+- Golden tests (`npm run test:golden`): **8/8 casos** pixel-idênticos ao
+  baseline; GET e POST byte-a-byte iguais; envelope Base64 preservado.
 
 ---
 
@@ -59,9 +61,9 @@ byte-a-byte iguais**, headers e envelope Base64 preservados.
 
 ```text
 node --test
-# tests 144
+# tests 149
 # suites 0
-# pass 144
+# pass 149
 # fail 0
 # cancelled 0
 # skipped 0
@@ -72,7 +74,8 @@ Cobertura por área (arquivo → o que valida):
 
 | Arquivo | Cobertura |
 |---|---|
-| `tests/legacy-contract.test.js` | Contrato `/badge` (GET/POST, aliases, Base64, PNG, filename, nome ausente, participante inexistente, Supabase indisponível, DPI inválido) |
+| `tests/legacy-contract.test.js` | Contrato `/badge` (GET/POST, aliases, Base64, PNG, filename, nome ausente, participante inexistente, Supabase indisponível, DPI inválido, **timeout do lookup legado com `name` do request**) |
+| `tests/legacyParticipantLookup.test.js` | `fetchLegacyParticipant`: timeout ~2 s retorna `null`, consulta cancelada via `abortSignal`, erro 500 retorna `null` (nunca propaga) |
 | `tests/repositories.test.js` | `fetchParticipantContext`/RPCs: UUID válido, inexistente, `event_id` nulo, erro genérico Supabase, timeout de 2 s, cache |
 | `tests/badgeService.test.js` | Orquestração `/badge`: flag off, UUID inválido, service role ausente, sucesso, fallback (participante, allowlist, layout ausente) |
 | `tests/layoutContractValidator.test.js` | Contrato do layout publicado (schema, dimensões, `print_profile` homologado) |
@@ -213,7 +216,9 @@ Eventos de homologação candidatos, confirmados em
       `src/repositories/labelRpcRepository.js`.
 - [x] Timeout de 2 s por operação Supabase e orçamento total ~5 s por
       requisição — `src/utils/withTimeout.js`,
-      `DYNAMIC_FLOW_TOTAL_BUDGET_MS` em `src/services/badgeService.js`.
+      `DYNAMIC_FLOW_TOTAL_BUDGET_MS` em `src/services/badgeService.js`;
+      **também aplicado a `fetchLegacyParticipant`** (retorna `null` em
+      timeout, sem propagar ao controller).
 - [x] `imageService` endurecido contra SSRF, redirect, IP privado, MIME
       falso, tamanho e dimensões — `src/services/imageService.js`.
 - [x] Rate limit e concorrência configuráveis por ambiente, com defaults
@@ -224,7 +229,40 @@ Eventos de homologação candidatos, confirmados em
 
 ---
 
-## 10. Próximo passo (fora deste plano de implementação)
+## 11. Ajuste final de resiliência — lookup legado com timeout (pré-homologação)
+
+Antes da homologação do evento piloto, `fetchLegacyParticipant` passou a
+usar o mesmo padrão do motor dinâmico:
+
+- `withTimeout` + `SUPABASE_OPERATION_TIMEOUT_MS` (2000 ms);
+- `abortSignal` na query Supabase (cancelamento real da conexão);
+- em timeout, erro Supabase ou rede: retorna `null` (comportamento legado
+  preservado — `/badge` segue com o `name` do request);
+- nenhum erro é lançado ao controller;
+- feature flags, pixels do renderer legado, envelope Base64, GET/POST
+  `/badge`, aplicativo, Bluetooth, banco e RPCs **não** foram alterados.
+
+### Resultado do timeout
+
+| Cenário | Resultado |
+|---|---|
+| Lookup legado `HANG_FOREVER` | timeout ~2011 ms → `fetchLegacyParticipant` retorna `null` |
+| Cancelamento | `hangState.aborted === true` (conexão fechada via `abortSignal`) |
+| `/badge` com `qr=HANG_FOREVER` + `name` | HTTP 200; PNG e Base64 OK; usa o `name` do request |
+| Golden (`npm run test:golden`) | **8/8 idênticos** (SHA-256 + RGBA) |
+
+### Contagem final de testes
+
+```text
+npm test          → 149/149 pass
+npm run test:golden → 24/24 pass (8 golden GET + 8 POST + contrato)
+```
+
+Commit final deste ajuste: ver cabeçalho deste documento (HEAD).
+
+---
+
+## 12. Próximo passo (fora deste plano de implementação)
 
 1. Deploy em produção com a configuração atual (`render.yaml`, flag off).
 2. Validar `/badge` legado em produção (smoke test manual).

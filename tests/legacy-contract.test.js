@@ -128,6 +128,39 @@ test('legacy /badge contract and golden baseline', async (t) => {
     assert.equal(json.success, true);
   });
 
+  await t.test('lookup legado em timeout: /badge continua usando o name do request (PNG + Base64)', async () => {
+    const startedAt = Date.now();
+    const base64Res = await server.requestGet({
+      name: 'Nome Do Request Em Timeout',
+      qr: 'HANG_FOREVER',
+      dpi: 300,
+      format: 'base64',
+    });
+    const elapsedMs = Date.now() - startedAt;
+
+    assert.equal(base64Res.status, 200, `unexpected status; stderr=${server.getStderr()}`);
+    const json = JSON.parse(base64Res.body.toString('utf8'));
+    assert.equal(json.success, true);
+    assert.equal(json.format, 'base64');
+    assert.equal(json.mimeType, 'image/png');
+    assert.equal(json.dataUri, `data:image/png;base64,${json.data}`);
+    assert.match(json.data, /^[A-Za-z0-9+/]+=*$/);
+    assert.ok(
+      elapsedMs < 3500,
+      `expected legacy timeout (~2s) then render, took ${elapsedMs}ms`
+    );
+
+    const pngRes = await server.requestGet({
+      name: 'Nome Do Request Em Timeout',
+      qr: 'HANG_FOREVER',
+      dpi: 300,
+      format: 'png',
+    });
+    assert.equal(pngRes.status, 200, `unexpected status; stderr=${server.getStderr()}`);
+    assert.equal(pngRes.headers['content-type'], 'image/png');
+    assert.ok(pngRes.body.length > 100, 'PNG body should be a non-trivial image');
+  });
+
   await t.test('unknown participant omits the QR but still renders the requested name', async () => {
     const res = await server.requestGet({
       name: 'Nome Enviado',

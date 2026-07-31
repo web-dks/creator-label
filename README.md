@@ -83,6 +83,14 @@ npm run golden:update    # recaptura deliberada, só depois de revisar a mudanç
 
 A comparação (`scripts/compare-golden.js`, usada também por `npm test`) verifica **SHA-256 primeiro**; se o hash não bater, decodifica ambos os PNGs e compara pixel a pixel (RGBA) apenas para gerar um relatório de diagnóstico — **nunca aprova uma diferença automaticamente**. Qualquer mudança no `golden/manifest.json` exige rodar `npm run golden:update` manualmente e revisar o diff antes de commitar.
 
+### Performance (motor dinâmico)
+
+```bash
+npm run perf:check   # opcional: --out caminho/para/relatorio.json
+```
+
+Sobe `src/app.js` real em processo, contra um Supabase dinâmico fake local, e mede 1 request / 10 sequenciais / 10 simultâneas / 50 controladas (média, p95, tamanho de resposta), além do efeito de cache e de fallback. Não faz parte de `npm test`; é um script manual de diagnóstico. Última medição registrada em `docs/perf-results.json` e resumida em `docs/validacao-motor-dinamico-etiquetas.md`.
+
 ## Variáveis de ambiente
 
 Ver `.env.example` para a lista completa e comentada. Resumo:
